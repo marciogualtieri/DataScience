@@ -1,0 +1,1313 @@
+---
+title: "Titanic Survivorship Analysis"
+output:
+  html_notebook:
+    toc: yes
+  html_document:
+    toc: yes
+---
+
+# Overview
+
+I intend to use this notebook to showcase my data science and R skills. I'm trying to be verbose for this reason. It's purpose is also to serve as my "bag of tricks", which I can consult in the future. Keep in mind that I'm a coder by trade learning data science. Suggestions and constructive critique are always welcome.
+
+# Installing the Required Packages
+
+You might need to install the following packages if you don't already have them:
+
+```{r}
+# install.packages("xtable")
+# install.packages("ggplot2")
+# install.packages("dplyr")
+# install.packages("plyr")
+# install.packages("vcd")
+# install.packages("png")
+# install.packages("caret")
+# install.packages("randomForest")
+# install.packages("ggrepel")
+# install.packages("party")
+# install.packages("Amelia")
+# install.packages("mice")
+# install.packages("mlbench")
+```
+
+Just uncomment the packages you need and run this chunck before you run the remaining ones in this notebook.
+
+# Importing the Required Packages
+
+Once the libraries are installed, you need to load them as follows:
+
+```{r}
+library(xtable)                                # Pretty printing dataframes
+library(plyr, warn.conflicts = FALSE)          # Manipulating dataframes
+suppressMessages(library(Amelia))              # Missing data
+library(dplyr, warn.conflicts = FALSE)
+library(stringr)                               # String operations
+library(ggplot2)                               # Plotting
+library(lattice)
+library(grid)
+library(gridExtra, warn.conflicts = FALSE)
+library(ggrepel)
+library(vcd)
+library(caret)                                 # Machine learning
+library(rpart)
+library(e1071)
+suppressMessages(library(randomForest))
+library(mlbench)
+suppressMessages(library(mice))                # Data imputation
+```
+
+# Loading Data
+
+## Reading CSV Files
+
+Let's first load our data-sets:
+
+```{r}
+train <- read.csv('../input/train.csv', na.strings=c("NA", "NULL", ""), stringsAsFactors = F)
+test  <- read.csv('../input/test.csv', na.strings=c("NA", "NULL", ""), stringsAsFactors = F)
+all <- rbind.fill(train, test)
+```
+
+You might have noticed that the testing data-set isn't labeled (`Survived` is not present):
+
+```{r}
+str(test)
+```
+
+
+## Record Counting
+
+Here's the record count for the data-sets:
+
+```{r}
+trainRows <- nrow(train)
+testRows <- nrow(test)
+totalRows <- nrow(train) + nrow(test)
+```
+
+|Data-set|Number of Records|
+|-------|------------------|
+|train  |`r trainRows`     |
+|test   |`r testRows`      |
+|total  |`r totalRows`     |
+
+## Taking a Sample
+
+The standard way data is rendered in a notebook shows nicely in RStudio, but look terrible in the HTML output (which is probably the format you're reading this right now), so I created a function for this purpose:
+
+```{r}
+renderTableInViewerPane <- function(data) {
+  html <- print(xtable(data), type = "html", print.results=FALSE)
+  temp <- tempfile(fileext = ".html")
+  cat(html, file = temp)
+  rstudioapi::viewer(temp)
+}
+
+renderTable <- function(data) {
+  renderTableInViewerPane(data)
+  print(xtable(data), type = "html")
+}
+
+sampleDataFrame <- function(data, size) {
+  sampleIndex <- sample(1:nrow(train), size)
+  return(data[sampleIndex, ])
+}
+```
+
+Here are some records sampled from the training data-set:
+
+
+```{r sample, results="asis"}
+renderTable(sampleDataFrame(train, 10))
+```
+
+## Data Types
+
+You'll find a description of the variables [here](https://www.kaggle.com/c/titanic/data), but in the spirit of making this notebook self-contained:
+
+</br>
+
+| Name    |Description                      |Type                                                                    |
+|---------|---------------------------------|------------------------------------------------------------------------|
+|Pclass	  |Passenger’s class                |Numeric / Categorical (1 = 1st class; 2 = 2nd class; 3 = 3rd class)     |
+|Name	    |Passenger’s name                 |String                                                                  |
+|Sex	    |Passenger’s gender               |String / Categorical (male, female)                                     |
+|Age	    |Passenger’s age                  |Numeric                                                                 |
+|SibSp	  |Number of siblings/spouses aboard|Numeric                                                                 |
+|Parch	  |Number of parents/children aboard|Numeric                                                                 |
+|Ticket	  |Ticket Code                      |Alpha-numeric                                                           |
+|Fare	    |Fare                             |Numeric                                                                 |
+|Cabin	  |Cabin Code                       |Alpha-numeric                                                           |
+|Embarked	|Port of embarkation              |Character / Categorical (C = Cherbourg; Q = Queenstown; S = Southampton)|
+
+`read.csv()` will assign types automatically. You can always check your data types using `str()`:
+
+```{r}
+str(train)
+```
+
+# Missing Data
+
+## Detecting Missing Data
+
+It's always useful to know if there are missing values from the start:
+
+```{r, fig.width = 8, fig.height = 8}
+missmap(train, main = "Missing Values (Training Data-set)", col = c("red", "lightgrey"))
+```
+
+
+```{r, fig.width = 8, fig.height = 8}
+missmap(test, main = "Missing Values (Testing Data-set)", col = c("red", "lightgrey"))
+```
+
+
+
+```{r}
+missingCabinRows <- nrow(all[is.na(all$Cabin), ])
+missingAgeRows <- nrow(all[is.na(all$Age), ])
+missingFareRows <- nrow(all[is.na(all$Fare), ])
+missingEmbarkedRows <- nrow(all[is.na(all$Embarked), ])
+```
+
+`Cabin`, `Age` and `Embarked` are missing for a number of records:
+
+|Variable  |Number of Missing Records|
+|----------|-------------------------|
+|`Cabin`   |`r missingCabinRows`     |
+|`Age`     |`r missingAgeRows`       |
+|`Fare`     |`r missingFareRows`     |
+|`Embarked`|`r missingEmbarkedRows`  |
+
+<br/>
+The classifier we'll create won't work well with missing data (you will get "NA" predictions), so we need to estimate missing values using [imputation](https://en.wikipedia.org/wiki/Imputation_(statistics)) methods.
+
+## Dealing with Missing Data
+
+### Missing `Age` and `Fare`
+
+We can use imputation here. For continuous variables, such as these, I'm going to use [mice](https://cran.r-project.org/web/packages/mice/index.html):
+
+```{r}
+estimateMissingVariables <- function(data, trainData, testData) {
+  predictors <- c("Age", "Sex", "Fare", "Pclass", "SibSp", "Parch", "Embarked", "Title")
+  set.seed(345)
+  all <- rbind.fill(trainData, testData)
+  capture.output(model <- mice(all[, names(all) %in% predictors], method='rf'))
+  output <- complete(model)
+  all$Age <- output$Age
+  all$Fare <- output$Fare
+  return(all[all$PassengerId %in% data$PassengerId, ])
+}
+
+fixedTrain <- estimateMissingVariables(train, train, test)
+fixedTest <- estimateMissingVariables(test, train, test)
+```
+
+Let's do a quick sanity check by comparing histograms before and after data imputation. I have created a custom histogram:
+
+```{r}
+customHistogram <- function(data, column, title) {
+  missing = nrow(data[is.na(data[,  column]), ])
+  ggplot(data=data, aes_string(x = column)) +
+  geom_histogram(bins = 20, na.rm = TRUE, fill = "blue", alpha = 0.2) +
+  xlab(paste(column, "(", title, ", NA Count: ", missing, ")"))
+}
+```
+
+Which renders the following plots:
+
+```{r, fig.width = 8, fig.height = 8}
+fixedAll <- rbind.fill(fixedTrain, fixedTest)
+
+allAge <- customHistogram(all, "Age", "Original")
+fixedAllAge <- customHistogram(fixedAll, "Age", "Fixed")
+
+allFare <- customHistogram(all, "Fare", "Original")
+fixedAllFare <- customHistogram(fixedAll, "Fare", "Fixed")
+
+grid.arrange(allAge, fixedAllAge, 
+             allFare, fixedAllFare,
+             ncol=2, nrow=2)
+```
+
+Looking good, no NAs and overall shape didn't change much. Let's use them:
+
+```{r}
+train <- fixedTrain
+test <- fixedTest
+```
+
+### Missing `Embarked`
+
+These are the records missing `Embarked`:
+
+```{r missingEmbarked, results='asis'}
+missingEmbarkedIndex <- is.na(train$Embarked)
+renderTable(train[missingEmbarkedIndex, ])
+```
+
+
+<br/>
+Given that `Embarked` is categorical, we could use random forest here, but just to try something different, let's try a [decision tree](https://en.wikipedia.org/wiki/Decision_tree_learning) from the [rpart](https://cran.r-project.org/web/packages/rpart/index.html) package:
+
+```{r}
+estimateMissingEmbarked <- function(data, trainData, testData) {
+  all <- rbind.fill(trainData, testData)
+  missing <- data[is.na(all$Embarked), ]
+  present <- data[!is.na(all$Embarked), ]
+
+  fol <- formula(Embarked ~ Sex + Age + Fare + Pclass + SibSp + Parch)
+  model <- rpart(fol, method='class', data=all)
+  missing$Embarked <-predict(model, missing, type='class')
+  all <- rbind.fill(missing, present)
+  all <- all[with(all, order(PassengerId)), ]
+  return(all[all$PassengerId %in% data$PassengerId, ])
+}
+
+train <- estimateMissingEmbarked(train, train, test)
+test <- estimateMissingEmbarked(test, train, test)
+```
+
+These are the predictions for `Embarked`:
+
+```{r fixedEmbarked, results='asis'}
+renderTable(train[missingEmbarkedIndex, ])
+```
+
+# Feature Engineering
+
+## Converting Categorical Fields to Factors
+
+The categorical fields need to be converted to factors (which are well-suited for categorical data) for tasks such as plotting and machine learning:
+
+```{r}
+toFactor <- function(data) {
+   columns <- intersect(names(data), c("Survived", "Sex", "Embarked", "Pclass"))
+  data[, columns] <- lapply(data[, columns] , factor)
+  return(data)
+}
+
+train <- toFactor(train)
+test <- toFactor(test)
+```
+
+Note that these columns are now factors:
+
+```{r}
+str(train)
+```
+
+## `Name` Analysis
+
+### Extracting `Surname` from `Name`
+
+Let's see if we can improve accuracy by squeezing some more information from the remaining variables, starting by `Name`. Here's a sample from the training data-set:
+
+```{r}
+sample <- head(train, 12)
+sample$Name
+```
+
+The pattern seem to be "Surname, Title. Names". We're particularly interested in "Surname" and "Title". I have extracted parsing into functions for cleaner code:
+
+```{r}
+namePattern <- "(.+),\\s*(.+?)\\..+"
+
+extractSurname <- function(name) {
+  return(str_match_all(name, namePattern)[[1]][2])
+}
+```
+
+Let's create an additional column for `Surname`:
+
+```{r}
+addSurname <- function(data) {
+  data$Surname <- sapply(data$Name, extractSurname)
+  return(data)
+}
+
+train <- addSurname(train)
+```
+
+
+### Extracting `Title` from `Name`
+
+```{r}
+extractTitle <- function(name) {
+  return(str_match_all(name, namePattern)[[1]][3])
+}
+```
+
+Let's create an additional column for `Title`:
+
+```{r}
+addTitle <- function(data) {
+  data$Title <- sapply(data$Name, extractTitle)
+  return(data)
+}
+train <- addTitle(train)
+```
+
+Here's the distribution for `Title`:
+
+```{r, fig.width = 8, fig.height = 8}
+countBarchart <- function(data, column, title) {
+   ggplot(data, aes_string(x=column)) + 
+   geom_bar(fill = "blue", alpha = 0.2) +
+   geom_text(stat='count', aes(label=sprintf("%d\n(%d %%)", ..count.., round(..count.. * 100/sum(..count..), 0)), vjust=0)) +
+   xlab(paste(column, "(", title, ")"))
+}
+
+countBarchart(train, "Title", "Overall")
+```
+
+The most frequent titles are "Mr", "Miss", "Mrs", "Master", "Dr" and "Rev". The remaining ones are "Capt", "Col", "Don", "Jonkheer", "Lady", "Major", "Mlle" (Mademoiselle), "Mme" (Madam), "Sir", and "the Countess".
+These all seem to be related to people with a "higher class", so I'll rewrite `addTitle()` to group them together into "Bourgeoisie" ([yes, I'm a democratic socialist, not a socialist. Yuge difference, yuge!](https://www.youtube.com/watch?v=yL2dGTDQXVo)):
+
+```{r}
+addTitle <- function(data) {
+  frequent <- c("Mr", "Miss", "Mrs")
+  data$Title <- sapply(data$Name, extractTitle)
+  data$Title[!(data$Title %in% frequent)] <- "Bourgeoisie"
+  data[, "Title"] <- as.factor(data[, "Title"])
+  return(data)
+}
+
+train <- addTitle(train)
+```
+
+Here's the new distribution for `Title`:
+
+```{r, fig.width = 8, fig.height = 8}
+countBarchart(train, "Title", "Overall")
+```
+
+
+There are different ways to visualize survival rates, but I think that bar charts are the best tool for this purpose:
+
+
+```{r}
+categoricalResultCountBarchart <- function(data, xColumn, yColumn) {
+  survivors <- plyr::count(data, vars=c(xColumn, yColumn))
+  survivors <- group_by_(survivors, xColumn) %>% dplyr::mutate(Percentage = round(freq * 100 / sum(freq)))
+
+  ggplot(data = survivors, aes_string(x = xColumn, y = "Percentage", fill = yColumn)) +
+    geom_bar(stat="identity", position = "dodge") +
+    geom_text(aes(label=sprintf("%d\n(%d %%)", freq, Percentage)))
+}
+```
+
+Here's the survivorship for `Title`:
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(train, "Title", "Survived")
+```
+
+> **NOTE:**
+> You might have noticed that the bar heights represent percentages within a given group, not record counts. That's because we might not get record counts of the same order of magnitude for every group, i.e., a large number of "Mr" and a small number of "Dr", which would render the bar for the last nearly invisible. I have labeled the bars with the record count and percentage though, so the reader is aware of the actual count.
+
+The winners are "Mrs", "Miss", "Master" and "Bourgeoisie". "Mrs" and "Miss" are related to gender, while "Master" and "Bourgeoisie" to wealth.
+
+## Women and Children First
+
+Let's start with the first thing that comes to mind in a moment of crisis, that known code of conduct: ["Women and children first."](https://en.wikipedia.org/wiki/Women_and_children_first).
+
+### Gender Survivorship
+
+```{r}
+categoricalResultCountBarchart(train, "Sex", "Survived")
+```
+
+Females do seem to have a greater chance of surviving.
+
+### Making Age Categorical by Transforming `Age` into `AgeGroup`
+
+First I'll add a `AgeGroup` field since it's easier to reason using categories here:
+
+```{r}
+addAgeGroup <- function(data) {
+  age_breaks <- c(-Inf,12,18,25,35,45,55,65,75, Inf)
+  data$AgeGroup <- cut(data$Age, breaks=age_breaks)
+  data[, "AgeGroup"] <- as.factor(data[, "AgeGroup"])
+  return(data)
+}
+
+train <- addAgeGroup(train)
+```
+
+I looked up for age groups used in surveys and these ranges seem of common use.
+
+### Age Survivorship
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(train, "AgeGroup", "Survived")
+```
+
+### Child or Adult
+
+Let's try to go all the way up to eleven and break the categories in only two groups, child and not-child:
+
+```{r, fig.width = 8, fig.height = 8}
+addChild <- function(data) {
+  data$Child <- data$Age < 12
+  data[, "Child"] <- as.factor(data[, "Child"])
+  return(data)
+}
+
+train <- addChild(train)
+
+categoricalResultCountBarchart(train, "Child", "Survived")
+```
+
+### Conclusion
+
+Children do seem to have a greater chance of surviving (as did women).
+
+!["Women and children first? Really? Shouldn't be whoever's closest?"](https://s5.postimg.org/8zzl5ot53/larry_women_and_children_first.png)
+
+## Survival of the Richest
+
+### `Fare` Analysis
+
+Let's start with `Fare` as a measure of wealth. Once again I have created a custom plot, this time a density plot:
+
+```{r}
+verticalLine <- function(value, name, color) {
+  label <- paste("paste(", shQuote(name), ", ", shQuote("\\n"), ", ", value, ")")
+  geomObj <- list(geom_vline(aes_string(xintercept=value), colour=color, linetype='dashed'),
+                  geom_text(aes_string(x=value, y = 0, label=label)))
+  return(geomObj)
+}
+
+customDensityPlot <- function(data, xColumn, title) {
+  minXColumn <- paste("min(", xColumn, ", na.rm = TRUE)")
+  medianXColumn <- paste("median(", xColumn, ", na.rm = TRUE)")
+  maxXColumn <- paste("max(", xColumn, ", na.rm = TRUE)")
+  
+  ggplot(data, aes_string(x = xColumn)) + 
+  geom_density(na.rm = TRUE, fill = "blue", alpha=0.2) +
+  xlab(paste(xColumn, "(", title, ")")) +
+
+  verticalLine(minXColumn,  "min", "blue") +
+  verticalLine(medianXColumn, "median", "red") +
+  verticalLine(maxXColumn, "max", "blue")
+}
+```
+
+`Fare` depends on `Pclass` (passenger's class) and `Embarked` (location where the passenger embarked), but let's start with the overall `Fare`:
+
+```{r, fig.width = 8, fig.height = 8}
+customDensityPlot(all, "Fare", "(Overall)")
+```
+
+Breaking the data into all possible combinations of`Embarked` and `Pclass` might be more insightful:
+
+```{r}
+cData <- all[all$Embarked == "C", ]
+c1Data <- cData[cData$Pclass == 1, ]
+c2Data <- cData[cData$Pclass == 2, ]
+c3Data <- cData[cData$Pclass == 3, ]
+
+sData <- all[all$Embarked == "S", ]
+s1Data <- sData[sData$Pclass == 1, ]
+s2Data <- sData[sData$Pclass == 2, ]
+s3Data <- sData[sData$Pclass == 3, ]
+
+qData <- all[all$Embarked == "Q", ]
+q1Data <- qData[qData$Pclass == 1, ]
+q2Data <- qData[qData$Pclass == 2, ]
+q3Data <- qData[qData$Pclass == 3, ]
+```
+
+```{r}
+c1Density <- customDensityPlot(c1Data, "Fare", "1st-class, C")
+c2Density <- customDensityPlot(c2Data, "Fare", "2nd-class, C")
+c3Density <- customDensityPlot(c3Data, "Fare", "3rd-class, C")
+
+s1Density <- customDensityPlot(s1Data, "Fare", "1st-class, S")
+s2Density <- customDensityPlot(s2Data, "Fare", "2nd-class, S")
+s3Density <- customDensityPlot(s3Data, "Fare", "3rd-class, S")
+
+q1Density <- customDensityPlot(q1Data, "Fare", "1st-class, Q")
+q2Density <- customDensityPlot(q2Data, "Fare", "2nd-class, Q")
+q3Density <- customDensityPlot(q3Data, "Fare", "3rd-class, Q")
+```
+
+```{r, fig.width = 8, fig.height = 8}
+grid.arrange(c1Density, s1Density, q1Density, 
+             c2Density, s2Density, q2Density, 
+             c3Density, s3Density, q3Density, 
+             ncol=3, nrow=3)
+```
+
+I would say that we could use`Fare` and `Pclass` to deduce `Embarked`. These are the records missing `Embarked` in the training data-set:
+
+```{r embarkedAnalysis, results='asis'}
+renderTable(train[missingEmbarkedIndex, ])
+```
+
+<br/>
+The passengers missing `Embarked` are the ones with `PassengerId` equals to 62 and 830. Note that these records are from 1st-class and their `Fare` are both equal to 80.
+The density plot for "C" and 1st-class has its peak around a median of 78.667, thus "C" for the records missing `Embarked` as estimated previously using a decision tree seems reasonable.
+
+### Making Fare Categorical by Transforming `Fare` into `FareGroup`
+
+Once again, I find easier to reason with categories, so based on the overall density for `Fare`, I'm defining `FareGroup` as follows:
+
+```{r}
+fare_breaks <- c(-Inf,10,20,50,100,200,Inf)
+
+addFareGroup <- function(data) {
+  data$FareGroup <- cut(data$Fare, breaks=fare_breaks)
+  data[, "FareGroup"] <- as.factor(data[, "FareGroup"])
+  return(data)
+}
+```
+
+Sadly, it seems like wealth increases ones chances of surviving:
+
+```{r, fig.width = 8, fig.height = 8}
+train <- addFareGroup(train)
+categoricalResultCountBarchart(train, "FareGroup", "Survived")
+```
+
+### `Pclass` (Passenger's Class) Analysis
+
+How about `Pclass` (passenger's class) as another indicator of wealth?
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(train, "Pclass", "Survived")
+```
+
+Passenger class also seem to support that wealth increases one's chance of surviving...
+
+### Conclusion
+
+Wealth seems to increase survivorship for both available indicators (`Fare` and `Pclass`).
+
+!["I'm so sick of the 1% getting this preferential treatment! Enough is enough!"](https://s5.postimg.org/ie5iph9c7/bernie_and_larry.png)
+
+## Family Ties
+
+The next attributes are `SibSp` (passenger's siblings/spouse count) and `Parch` (passenger's parents/children count). We might be able to use these to analyse if families stick together in a disaster.
+
+![Actual Picture of Donald Trump's Grandfather](https://s5.postimg.org/m98ws1shz/drumpf.png)
+
+No, this gentleman isn't Trump's Grandfather. Better to be clear: Silly might [sue me](https://www.youtube.com/watch?v=WB4sGX0R5ak)!
+
+### `SibSp` (Passenger's Siblings/Spouse count) Analysis
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(train, "SibSp", "Survived")
+```
+
+There seems to exist a sweet spot around one siblings/spouse (couples? relatives?), but it's not that clear from the plot that made a big difference.
+
+### `Parch` (Passenger's Parents/Children) Analysis
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(train, "Parch", "Survived")
+```
+
+There also seems to be a sweet spot around one parents/children, but it's also not that clear from the plot that it makes a huge difference.
+
+### Motherhood
+
+One last think that comes to mind is motherhood. Would a mother with her child have better chances of surviving (a bit of a symbiotic relationship, Who would separate a mother from her child?).
+
+[This source](http://www.infoplease.com/ipa/A0005061.html) claims that women got married, in average, at an age of 21.6 years old in the 1900's. So, I'm going to consider a person over 21 years old, female and with `Parch` greater than zero a mother:
+
+```{r}
+addMother <- function(data) {
+  data$Mother <- data$Age > 21 & data$Sex == "female" & data$Parch > 0
+  data[, "Mother"] <- as.factor(data[, "Mother"])
+  return(data)
+}
+
+train <- addMother(train)
+categoricalResultCountBarchart(train, "Mother", "Survived")
+```
+
+## Location, Location, Location
+
+### `Embarked` Analysis
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(train, "Embarked", "Survived")
+```
+
+### Conclusion
+
+For some reason "C" (Cherbourg) seems to have higher survivorship. Let's take a look at the data:
+
+```{r}
+cData <- train[train$Embarked == "C", ]
+qData <- train[train$Embarked == "Q", ]
+sData <- train[train$Embarked == "S", ]
+```
+
+```{r}
+cAgeGroup <- countBarchart(cData, "AgeGroup", "Embarked = C")
+qAgeGroup <- countBarchart(qData, "AgeGroup", "Embarked = Q")
+sAgeGroup <- countBarchart(sData, "AgeGroup", "Embarked = S")
+
+cFareGroup <- countBarchart(cData, "FareGroup", "Embarked = C")
+qFareGroup <- countBarchart(qData, "FareGroup", "Embarked = Q")
+sFareGroup <- countBarchart(sData, "FareGroup", "Embarked = S")
+
+cSex <- countBarchart(cData, "Sex", "Embarked = C")
+qSex <- countBarchart(qData, "Sex", "Embarked = Q")
+sSex <- countBarchart(sData, "Sex", "Embarked = S")
+```
+
+```{r, fig.width = 8, fig.height = 8}
+grid.arrange(cAgeGroup, qAgeGroup, sAgeGroup, 
+             cFareGroup, qFareGroup, sFareGroup, 
+             cSex, qSex, sSex, 
+             ncol=3, nrow=3)
+```
+
+From the plots, it seems like the population from "C" does better than the others in terms of wealth (better than "Q" and "S"), age (better than "Q" and comparable to "S") and gender (comparable to "Q" and better than "S").
+
+## Family Ties II: Alex Keaton Travels Back in Time and kills Donald Trump
+
+Just kidding, but wouldn't you watch this movie?
+
+!["I'm going to build a great iceberg and keep those pesky Italians from reaching New York. Some bad uomini over there."](https://s5.postimg.org/iod18tnyf/family_ties_ii.png)
+
+### Combining `SibSp` and `Parch` into `FamilySize`
+
+Given that `FamilySize = SibSp + Parch + 1`, could we combine two variables into one without effect?
+
+```{r}
+addFamilySize <- function(data) {
+  data$FamilySize <- data$SibSp + data$Parch + 1
+  return(data)
+}
+
+train <- addFamilySize(train)
+```
+
+### Making Fare Categorical by Transforming `FamilySize` into `FamilyGroup`
+
+Again, I find easier to reason with categories, so how about breaking `FamilySize` into groups? I've extracted the task of creating this field into a function:
+
+```{r}
+addFamilyGroup <- function(data) {
+  family_breaks <- c(-Inf,1,2,4,6,Inf)
+  family_labels <- c("single", "couple", "small", "medium", "big")
+  data$FamilyGroup <- cut(data$FamilySize, breaks=family_breaks, labels = family_labels)
+  data[, "FamilyGroup"] <- as.factor(data[, "FamilyGroup"])
+  return(data)
+}
+train <- addFamilyGroup(train)
+```
+
+Here's the distribution for `FamilyGroup`:
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(train, "FamilyGroup", "Survived")
+```
+
+Small families and couples seem to have a higher chance of surviving.
+
+### Using `Surname` to Compute Family Survival Rate
+
+Could we somehow use `Surname`? A question we brought up earlier is: do families stick together? That is, is surviving correlated to the number of people in your family that survived?
+
+```{r}
+computeSurvivalRatePerColumn <- function(data, column) {
+  rates <- plyr::count(data, vars=c(column, "Survived"))
+  rates <- group_by_(rates, column) %>% dplyr::mutate(SurvivalRate = round(freq * 100 / sum(freq)))
+  rates <- rates[rates$Survived == 1, ]
+  rates <- rates[, which(names(rates) %in% c(column, "SurvivalRate"))]
+  names(rates)[names(rates) == "SurvivalRate"] <- paste0("SurvivalRateBy", column)
+  return(rates)
+}
+
+addSurvivalRate <- function(column, data, rateData) {
+  rates <- computeSurvivalRatePerColumn(rateData, column)
+  rateColumn <- paste0("SurvivalRateBy", column)
+  
+  if(rateColumn %in% names(data)) {
+    data <- data[ , -which(names(data) %in% c(rateColumn))]
+  }
+  data <- left_join(data, rates,by=column)
+  data[is.na(data[, rateColumn]), rateColumn] <- 0
+  return(data)
+}
+
+train <- addSurvivalRate("Surname", train, train)
+```
+
+The following distribution for `FamilySurvivalRate` seems to support that families stick together:
+
+```{r, fig.width = 8, fig.height = 8}
+countBarchart(train, "SurvivalRateBySurname", "Overall")
+```
+
+### Conclusion
+
+The majority of people seem to stick together, for the best or for the worst...
+
+![" Where do you think you're going? Nobody's leaving. Nobody's walking out on this fun, old-fashioned family Christmas. No, no. We're all in this together."](https://s5.postimg.org/9s294vxc7/griswold_family.png)
+
+## `Cabin` Analysis
+
+Let's take a look at a sample from `Cabin` (keeping in mind that is sparse):
+
+```{r}
+cabins <- train[!is.na(train$Cabin), ]$Cabin
+head(cabins, 12)
+```
+
+I have found the following information [here](http://www.dummies.com/education/history/titanic-facts-the-layout-of-the-ship/):
+
+<br/>
+
+  -----------------------------------------------------------------------------------------------------------
+  Deck            Fore                             Amidships                   Aft
+  --------------- -------------------------------- --------------------------- ------------------------------
+  Boat            Officer’s bridge (crew)          Promenade (1st)\            Promenade (2nd)
+                                                   Gymnasium (1st)             
+
+  Promenade (A)   Reading and Writing Room (1st)   Lounge (1st)                Smoking room (1st)\
+                                                                               Verandah Café (1st)\
+                                                                               Palm Courts (1st)
+
+  Bridge (B)      Forecastle deck (crew)           Suites, cabins (1st)        À la Carte Restaurant (1st)\
+                                                                               Café Parisien (1st)\
+                                                                               Smoking room (2nd)\
+                                                                               Promenade (poop deck; 3rd)
+
+  Shelter (C)     Crew mess (crew)                 Cabins, staterooms (1st)\   Library (2nd)\
+                                                   Crew mess (crew)\           Smoking room (3rd)\
+                                                   Purser’s office (crew)      General room (3rd)
+
+  Saloon (D)      Open space (3rd)\                Dining saloon (1st)\        Dining saloon (2nd)\
+                  Cabins (3rd)                     Reception room (1st)\       Kitchen galleys (crew)
+                                                   Cabins (1st)                
+
+  Upper (E)       Cabins (3rd)                     Cabins (2nd)\               Cabins (2nd)\
+                                                   Cabins (crew)               Cabins (3rd)
+
+  Middle (F)      Cabins (3rd)                     Dining saloon (3rd)\        Cabins (2nd)\
+                                                   Swimming pool (1st)\        Cabins (3rd)
+                                                   Turkish baths (1st)         
+
+  Lower (G)       Storage rooms (crew)\            Boiler rooms (crew)         Squash court (1st)\
+                  Engine rooms (crew)                                          Post office (crew)
+
+  Orlop           Cargo rooms (crew)\              Boiler rooms (crew)         Engine rooms (crew)\
+                  Baggage rooms (crew)\                                        Cargo rooms (crew)
+                  Mail room (crew)                                             
+
+  Tank Top        Boiler rooms (crew)\             Boiler rooms (crew)\        Boiler rooms (crew)\
+                  Engine rooms (crew)              Engine rooms (crew)         Engine rooms (crew)
+  -----------------------------------------------------------------------------------------------------------
+  
+
+<br/>
+From this table we can tell that 1st-class cabins were located in decks "C" and "D", while 2nd-class and 3rd-class were located in decks "E" and "F". In the absence of `Pclass`, `Cabin` could be a good proxy if it wasn't so sparse.
+  
+[Here](https://www.encyclopedia-titanica.org/titanic-deckplans/) you will find blueprints from all decks in the ship. The numbers in `Cabin` don't seem to have any correlation with survivorship, but I have found an interesting insight in [this BBC article](http://www.bbc.com/news/magazine-17515305):
+
+<br/>  
+  
+> Each class of passengers had access to their own decks and allocated lifeboats - although crucially no lifeboats were stored in the third class sections of the ship.
+Third class passengers had to find their way through a maze of corridors and staircases to reach the boat deck. First and second class passengers were most likely to reach the lifeboats as the boat deck was a first and second class promenade.
+
+Which basically says that 3rd-class had some huge disadvantage regarding to reaching the boat deck. The 99% gets it once again...
+
+```{r}
+allPassengers <- nrow(train)
+firstClassPercent <- round(nrow(train[train$Pclass == 1, ]) * 100 / allPassengers)
+secondClassPercent <- round(nrow(train[train$Pclass == 2, ]) * 100 / allPassengers)
+thirdClassPercent <- round(nrow(train[train$Pclass == 3, ]) * 100 / allPassengers)
+```
+
+Not really 99%, but `r thirdClassPercent`% though. It seems like there wasn't such an inequality in terms of number of seats (or survivors) though:
+
+|Pclass|Percentage from Seats |
+|------|----------------------|
+|1st   |`r firstClassPercent` |
+|2st   |`r secondClassPercent`|
+|3st   |`r thirdClassPercent` |
+
+But helps to clarify the much larger casualties for 3rd-class. The myth is that the wealthy would forcibly keep non-wealthy from reaching the life-boats, but it seems like the ship was engineered to give the 3rd-class an disadvantage in the first place, even if not purposelessly in case of a disaster:
+
+> "Gates did exist which barred the third class passengers from the other passengers. But this was not in anticipation of a shipwreck but in compliance with US immigration laws and the feared spread of infectious diseases.
+Third class passengers included Armenians, Chinese, Dutch, Italians, Russians, Scandinavians and Syrians as well as those from the British Isles - all in search of a new life in America.
+"Under American immigration legislation, immigrants had to be kept separate so that before the Titanic docked in Manhattan, it first stopped at Ellis Island - where the immigrants were taken for health checks and immigration processing," Howells says."
+
+(From [the same BBC article](http://www.bbc.com/news/magazine-17515305) mentioned earlier)
+
+```{r}
+survivors <- nrow(train[train$Survived == 1, ])
+firstClassSurvivorsPercent <- round(nrow(train[train$Pclass == 1 & train$Survived == 1, ]) * 100 / survivors)
+secondClassSurvivorsPercent <- round(nrow(train[train$Pclass == 2 & train$Survived == 1, ]) * 100 / survivors)
+thirdClassSurvivorsPercent <- round(nrow(train[train$Pclass == 3 & train$Survived == 1, ]) * 100 / survivors)
+```
+
+|Pclass|Percentage from Survivors      |
+|------|-------------------------------|
+|1st   |`r firstClassSurvivorsPercent` |
+|2st   |`r secondClassSurvivorsPercent`|
+|3st   |`r thirdClassSurvivorsPercent` |
+
+Still, more people from 1st-class survived than any other class. Let's now add `Deck` to the records:
+
+```{r}
+extractDeck <- function(cabin) {
+  return(toString(unique(strsplit(cabin, "[^A-Z]+")[[1]])))
+}
+
+addDeck <- function(data) {
+  data$Deck <- sapply(data$Cabin, extractDeck)
+  data[, "Deck"] <- as.factor(data[, "Deck"])
+  return(data)
+}
+
+train <- addDeck(train)
+```
+
+Here's the count distribution per `Deck`:
+
+
+```{r, fig.width = 8, fig.height = 8}
+countBarchart(train, "Deck", "Overall")
+```
+
+I think that the data is too sparse to give us any insight, but here follows the survivorship for `Deck`:
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(train, "Deck", "Survived")
+```
+
+Doesn't quite support the claims in the article, but I believe that this is due to the sparsity of the data.
+
+I'm going to try to fix this issue by using `Ticket` (people traveling together have the same ticket code). It's reasonable to assume that people traveling together might share cabins.
+Maybe only one passenger from a sharing `Ticket` gets `Cabin`? Let's check:
+
+```{r}
+normalizeList <- function(elems) {
+  elems <- unique(elems)
+  elems <- elems[!is.na(elems)]
+  s <- paste(elems, collapse = " ")
+  if(str_length(trimws(s)) == 0) {
+    s <- NA
+  }
+  return(s)
+}
+
+cabins <- all[with(all, order(Ticket)), which(names(all) %in% c("Ticket", "Cabin"))]
+cabins <- cabins %>%
+  group_by(Ticket) %>%
+  summarise(Cabin = list(Cabin))
+cabins$Cabin <- sapply(cabins$Cabin, normalizeList)
+
+ticketsMissngCabinRows <- nrow(cabins[is.na(cabins$Cabin), ])
+```
+
+There are `r ticketsMissngCabinRows` missing `Cabin`, so it seems like that's not the case... `Cabin` seems just too sparse to use...
+
+## `Ticket` Analysis
+
+From fiddling around with data, I found out that people that embarked together share the same ticket code. I have grouped the data by `Ticket` and concatenated `Name`, `Surname`, `Title` and `Sex`. I've filtered the columns that seemed relevant and aggregated them by `Ticket`:
+
+```{r}
+aggregateFunction <- function(s) {
+  return(paste(s, collapse = " ~ "))
+}
+
+tickets <- train[with(train, order(Ticket)), which(names(train) %in% c("Ticket", "Name", "Surname", "Title", "Sex"))]
+tickets <- tickets %>%
+  group_by(Ticket) %>%
+  summarise(Names = aggregateFunction(Name), 
+            Surnames = aggregateFunction(Surname), 
+            Titles = aggregateFunction(Title), 
+            Genders = aggregateFunction(Sex),
+            People = n())
+tickets <- tickets[tickets$People > 1, ]
+```
+
+I have also filtered out people traveling alone, as I'm interested in groups traveling together:
+
+```{r tickets, results="asis"}
+renderTable(tickets)
+```
+
+<br/>
+If you go through this table, you'll find whole families under the same `Ticket`. I guess that we could use `Ticket` to establish family connections among passengers, but `Surname` seems more reliable to me.
+
+## Travel Buddies Ties
+
+### Using `Ticket` to Compute Travel Buddies Survival Rate
+
+From the previous section, we've found out that `Ticket` can be used to connect people traveling together. The question is, do "travel buddies" stick together? (in a similar way as families did?)
+
+```{r}
+train <- addSurvivalRate("Ticket", train, train)
+```
+
+Here's the distribution for `SurvivalRateByTicket`:
+
+```{r, fig.width = 8, fig.height = 8}
+countBarchart(train, "SurvivalRateByTicket", "Overall")
+```
+
+It seems like buddies do stick together, just like families. Of course most people traveling together are related, so `Ticket` could  probably be used as a proxy for `Surname'.
+
+### Conclusion
+
+<br/>
+A significant fraction of travel buddies seem to survive or die together for the available data.
+
+![Love you, man! Love you too, bud!](https://s5.postimg.org/ozi8p8p6v/i_love_you_man.png)
+
+# Classifier
+
+## Tunning the Classifier
+
+Let's try some cross validation to find the best parameters for our random forest classifier. The parameters that can be tunned in a random forest classifier are the following:
+
+|Parameter|Description                                                      |Comment                                                             |
+|---------|-----------------------------------------------------------------|--------------------------------------------------------------------|
+|ntree    |Number of trees.                                                 |Should be big enough to avoid overfitting (default is 500).         |
+|mtry     |Number of variables randomly sampled as candidates at each split.|We are going to use cross validation to determine it (default is 5).|
+
+Be warned that cross validation might take a few minutes to finish.
+
+### Random Search Cross Validation (caret)
+
+The following code does a random grid search:
+
+```{r}
+fml <- Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked + Title + Mother + Child
+
+randomForestRandomCrossValidation <- function(fml, data, metric) {
+  set.seed(345)
+  control <- trainControl(method="repeatedcv", number=10, repeats=3, search="random")
+  numParams <- length(attr(terms(fml), "term.labels"))
+  rfCV <- train(fml, data=data, method="rf", metric=metric, tuneLength=numParams, trControl=control)
+  return(rfCV)
+}
+
+rfRandomCVModel <- randomForestRandomCrossValidation(fml, train, "Accuracy")
+plot(rfRandomCVModel)
+```
+
+### Grid Search Cross Validation (caret)
+
+The following code does a deterministic grid search:
+
+```{r}
+randomForestGridCrossValidation <- function(fml, data, metric) {
+  set.seed(345)
+  control <- trainControl(method="repeatedcv", number=10, repeats=3, search="grid")
+  numParams <- length(attr(terms(fml), "term.labels")) - 1
+  tunegrid <- expand.grid(.mtry=c(1:numParams))
+
+  rfCV <- train(fml, data=data, method="rf", metric=metric, tuneGrid=tunegrid, trControl=control)
+  return(rfCV)
+}
+
+rfGridCVModel <- randomForestGridCrossValidation(fml, train, "Accuracy")
+plot(rfGridCVModel)
+```
+
+Another alternative to find the optimal mtry is`tuneRF()` from randomForest, which uses [OOBError](https://en.wikipedia.org/wiki/Out-of-bag_error):
+
+```{r}
+mtryTunning <- function(data) {
+  set.seed(345)
+  mtry <- tuneRF(data[, names(data) %in% attr(terms(fml), "term.labels")],
+                 data[, names(data) %in% c("Survived")],
+                 stepFactor=1.5,
+                 improve=1e-5,
+                 ntree=500)
+  return(mtry)
+}
+
+print(mtryTunning(train))
+```
+
+I have tried 3, 4 and 5 in my Kaggle submission, but not much difference.
+
+## Creating Models
+
+From the cross validataion we now know that the optimal value for mtry is 4. The next step is creating the classifier and evaluating them.
+
+```{r}
+randomForestBuilder <- function(fml, data) {
+  return(randomForest(formula(fml), data = data, mtry = 4))
+}
+
+svmBuilder <- function(fml, data) {
+  return(svm(formula(fml), data = data))
+}
+```
+
+## Evaluating the Classifier
+
+Given that our predictions are categorical (`Survived`), I've opted for [random forest](https://en.wikipedia.org/wiki/Random_forest) as the classifier, but I'm also trying [SVM](https://en.wikipedia.org/wiki/Support_vector_machine)s.
+
+Kaggle doesn't provide labeled testing data, so I'm going to break the training data-set into two data-sets (training and testing) for evaluation purposes.
+
+I have created functions for the purpose of evaluating performance for the models:
+
+```{r}
+fmeasure <- function(confusion) {
+  p <- confusion$byClass["Pos Pred Value"]
+  r <- confusion$byClass["Sensitivity"]
+  f <- 2 * ((p * r) / (p + r))
+  return(f)
+}
+
+accuracy <- function(confusion) {
+  return(confusion$overall["Accuracy"])
+}
+
+extractModel <- function(modelBuilder) {
+  functionBody <- paste(format(modelBuilder), collapse = " ")
+  functionBodyPattern <- ".+return\\((.+)\\).+"
+  model <- str_match_all(functionBody, functionBodyPattern)[[1]][2]
+  return(model)
+}
+
+evaluateModel <- function(fml, modelBuilder, predictionColumn, trainData, testData) {
+  model <- modelBuilder(fml, trainData)
+  predictions <- predict(model, newdata = testData)
+  confusion <- confusionMatrix(data = predictions, reference = testData$Survived)
+  evaluation <- data.frame(model = extractModel(modelBuilder), 
+                           formula = paste(format(fml), collapse = " "),
+                           accuracy = accuracy(confusion), 
+                           fmeasure = fmeasure(confusion), 
+                           stringsAsFactors=FALSE)
+  return(evaluation)
+}
+
+evaluateModels <- function(formulas, modelBuilders, predictionColumn, data, testData = NULL) {
+  set.seed(3456)
+  if(is.null(testData)) {
+    trainIdx <- createDataPartition(data$Survived, p = 0.5, list = FALSE, times = 1)
+    trainData <- data[trainIdx,]
+    testData <- data[-trainIdx,]
+  } else {
+    trainData <- data
+  }
+  
+  evaluations <- data.frame(model = character(), 
+                            formula = character(), 
+                            accuracy = numeric(0), 
+                            fmeasure = numeric(0), 
+                            stringsAsFactors=FALSE)
+
+  for (fml in formulas) {
+    for (modelBuilder in modelBuilders) {
+      evaluation <- evaluateModel(fml, modelBuilder, predictionColumn, trainData, testData)
+      evaluations <- bind_rows(evaluations, evaluation)
+    }
+  }
+  renderTable(evaluations)
+}
+```
+
+Note that I'm using [accuracy](https://en.wikipedia.org/wiki/Accuracy_and_precision) and [F-Measure](https://en.wikipedia.org/wiki/F1_score). I've seen F-Measure being used more often in machine learning (both in courses and at work), but I often compute both (accuracy seems more intuitive and easier for business to understand).
+
+The [confusion matrix](https://en.wikipedia.org/wiki/Confusion_matrix) returned by `caret::confusionMatrix()` has many different metrics, for which you can find more about [here](https://topepo.github.io/caret/measuring-performance.html). The metrics don't include a F-Measure though, so it needs to be computed from existent ones. For more information on the available metrics refer to [this](https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values) and [this](https://en.wikipedia.org/wiki/Precision_and_recall).
+
+Let's create some models using random forest and different groups of features:
+
+```{r evaluation, results="asis"}
+set.seed(3456)
+trainIdx <- createDataPartition(train$Survived, p = 0.5, list = FALSE, times = 1)
+evalTrainData <- train[trainIdx, ]
+evalTestData <- train[-trainIdx, ]
+
+evalTrainData <- addSurvivalRate("Ticket", evalTrainData, evalTrainData)
+evalTestData <- addSurvivalRate("Ticket", evalTestData, evalTrainData)
+evalTrainData <- addSurvivalRate("Surname", evalTrainData, evalTrainData)
+evalTestData <- addSurvivalRate("Surname", evalTestData, evalTrainData)
+
+formulas <- c(Survived ~ Sex,
+              Survived ~ Sex + Age,
+              Survived ~ Sex + Age + Fare,
+              Survived ~ Sex + Age + Fare + Pclass,
+              Survived ~ Sex + Age + Fare + Pclass + SibSp,
+              Survived ~ Sex + Age + Fare + Pclass + SibSp + Parch,
+              Survived ~ Sex + Age + Fare + Pclass + FamilySize,
+              Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked,
+              Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked + Title,
+              Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked + Title + Mother,
+              Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked + Title + Mother + Child,
+              Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked + Title + Mother + Child + SurvivalRateBySurname,
+              Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked + Title + Mother + Child + SurvivalRateByTicket,
+              Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked + Title + Mother + Child + SurvivalRateBySurname + SurvivalRateByTicket)
+
+models <- c(randomForestBuilder, svmBuilder)
+
+evaluateModels(formulas, models, "Survived", evalTrainData, evalTestData)
+```
+
+<br/>
+Note that the survival rates didn't do so well. That's seems because of overfitting.
+
+# Feature Importance
+
+I believe we've exhausted all features we could extract, so we can now build a final model and evaluate their variables' importance:
+
+```{r}
+fol <- formula(fml)
+model <- randomForest(fol, data=train)
+varImpPlot(model, type=2)
+```
+
+If you prefer the actual Gini values:
+
+```{r importance, results="asis"}
+sortedImportance <- function(model) {
+  modelImportance <- importance(model)
+  ginis <- data.frame(Variable = row.names(modelImportance), 
+                      MeanDecreaseGini = modelImportance[ ,'MeanDecreaseGini'])
+  ginis <- ginis %>% mutate(Id = dense_rank(desc(modelImportance)))
+  ginis <- ginis[with(ginis, order(-MeanDecreaseGini)), which(names(ginis) %in% c("Variable", "MeanDecreaseGini"))]
+  return(ginis)
+}
+
+renderTable(sortedImportance(model))
+```
+
+<br/>
+I have created `sortedImportance()` to get the variables sorted by Gini. Another way to go is simply invoking `importance()`:
+
+```{r}
+importance(model)
+```
+
+# Preparing the Testing Data
+
+We need also to apply all the transformations we came up with during feature engineering:
+
+```{r}
+addExtraVariables <- function(data, rateData) {
+  data <- addFamilySize(data)
+  data <- addFamilyGroup(data)
+  data <- addAgeGroup(data)
+  data <- addChild(data)
+  data <- addFareGroup(data)
+  data <- addMother(data)
+  data <- addSurname(data)
+  data <- addTitle(data)
+  data <- addDeck(data)
+  data <- addSurvivalRate("Surname", data, rateData)
+  data <- addSurvivalRate("Ticket", data, rateData)
+  return(data)
+}
+
+overrideFactors <- function(to, from) {
+  levels(to$Pclass) <- levels(from$Pclass)
+  levels(to$Sex) <- levels(from$Sex)
+  levels(to$Title) <- levels(from$Title)
+  levels(to$Embarked) <- levels(from$Embarked)
+  levels(to$AgeGroup) <- levels(from$AgeGroup)
+  levels(to$FareGroup) <- levels(from$FareGroup)
+  levels(to$FamilyGroup) <- levels(from$FamilyGroup)
+  levels(to$Embarked) <- levels(from$Embarked)
+  levels(to$Deck) <- levels(from$Deck) 
+  levels(to$Mother) <- levels(from$Mother)
+  return(to)
+}
+
+test <- addExtraVariables(test, train)
+test <- overrideFactors(test, train)
+```
+
+Now we can create a classifier and generate the predictions:
+
+```{r}
+buildOutputFileName <- function(fol, modelBuilder) {
+  modelName <- extractModel(modelBuilder)
+  formulaName <- paste0(format(fol), collapse = "")
+  output <- paste0(modelName, formulaName)
+  output <- str_replace_all(output, "[^\\w]", "")
+  output <- paste0(output, ".csv")
+  return(output)
+}
+
+generatePredictions <- function(fml, modelBuilder, predictionColumn, trainData, testData) {
+  fol <- formula(fml)
+  model <- modelBuilder(fol, data=trainData)
+  predictions <- predict(model, newdata = testData)
+  solution <- data.frame(PassengerID = testData$PassengerId, Survived = predictions)
+  output <- buildOutputFileName(fol, modelBuilder)
+  write.csv(solution, file = output, row.names = FALSE)
+  testData$Survived <- predictions
+  return(testData)
+}
+
+generateAllPredictions <- function(formulas, modelBuilders, predictionColumn, trainData, testData) {
+  for (fml in formulas) {
+    for (modelBuilder in modelBuilders) {
+      evaluation <- generatePredictions(fml, modelBuilder, predictionColumn, trainData, testData)
+    }
+  }
+}
+
+formulas <- c(Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked + Title + Mother + Child)
+generateAllPredictions(formulas, models, "Survived", train, test)
+```
+
+# Sanity Check
+
+I've saved the predictions to `test$Survived`, this way we can quick check it through plotting.
+
+```{r}
+test <- generatePredictions(fml, randomForest, "Survived", train, test)
+
+countBarchart(test, "Survived", "Overall")
+```
+
+I've submitted a trivial model to Kaggle where everybody survived to measure the percentage of survivors. There are about 63% survivors in the testing data-set, which is about the same percentage of survivors in the training data-set. That's a nice sanity check: If your predictions are any good, the percentage of survivors in your predictions should be close to this value.
+
+```{r}
+test <- generatePredictions(fml, svm, "Survived", train, test)
+categoricalResultCountBarchart(test, "Sex", "Survived")
+```
+
+Female do better than male.
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(test, "AgeGroup", "Survived")
+```
+
+Children do better than adults.
+
+```{r, fig.width = 8, fig.height = 8}
+categoricalResultCountBarchart(test, "FareGroup", "Survived")
+```
+
+```{r}
+categoricalResultCountBarchart(test, "Pclass", "Survived")
+```
+
+Wealthy do better than poor. The predictions seem consistent with the observations.
+
+# Kaggle Submission
+  
+|Model       |Features                                                                        |Accuracy|Comments                                                    |
+|------------|--------------------------------------------------------------------------------|--------|------------------------------------------------------------|
+|randomForest|Gender based model from Kaggle                                                  |0.76555 |Baseline.                                                   |
+|randomForest|Everybod survives                                                               |0.62679 |This means that 63% of people in the test data-set survived.|
+|randomForest|Sex                                                                             |0.76555 |                                                            |
+|randomForest|Sex + Age                                                                       |0.76555 |                                                            |
+|randomForest|Sex + Age + Fare                                                                |0.76077 |                                                            |
+|randomForest|Sex + Age + Pclass                                                              |0.75120 |                                                            |
+|randomForest|Sex + Age + Fare + Pclass                                                       |0.78947 |                                                            |
+|randomForest|Sex + Age + Fare + Pclass + SibSp                                               |0.78469 |                                                            |
+|randomForest|Sex + Age + Fare + Pclass + Parch                                               |0.77990 |                                                            |
+|randomForest|Sex + Age + Fare + Pclass + SibSp + Parch                                       |0.77033 |                                                            |
+|SVM         |Survived ~ Sex + Age + Fare + Pclass + SibSp + Parch + Embarked + Title + Mother|0.79904 |                                                            |
+|SVM         |Survived ~ Sex + Age + Fare + Pclass + FamilySize + Embarked + Title + Mother   |0.79426 |                                                            |
