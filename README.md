@@ -1,3 +1,3 @@
-## Data Science Portfolio
+## Data Science
 
 * [Kaggle Challenges](https://github.com/marciogualtieri/DataScience/tree/master/kaggle)
