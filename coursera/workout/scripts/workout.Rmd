@@ -552,7 +552,7 @@ decision_tree_builder <- function() {
 }
 
 random_forest_k_fold_cross_validation_builder <- function() {
-  name <- "Random Forest with Cross Validation (caret package)"
+  name <- "Random Forest with K-Fold Cross Validation (caret package)"
   
   build <- function(formula, data) {
     control <- trainControl(method = "cv", number = 5)
@@ -688,6 +688,8 @@ formulas <- c(belt_formula, arm_formula, forearm_formula, dumbbell_formula)
 models <- c(random_forest_builder)
 evaluate_models(formulas, models, "classe", train_data, cross_validation_data)
 ```
+
+<br/>
 
 #### Features Grouped by Type of Measurement
 
