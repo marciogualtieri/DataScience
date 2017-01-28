@@ -506,6 +506,8 @@ my_model_builder <- function() {
   build <- function(formula, data) "<my model builder code>"
 
   predictions <- function(model, data) "<my predictions function>"
+  
+  error_rate <- function(model) "<my OOB eror function>"
 
   return(list(name=name, build=build, predictions=predictions))
 }
@@ -523,7 +525,7 @@ random_forest_builder <- function() {
   build <- function(formula, data) return(randomForest(formula, data = data))
   
   predictions <- function(model, data) return(predict(model, newdata = data, type = "class"))
-  
+
   return(list(name=name, build=build, predictions=predictions))
 }
 
@@ -586,33 +588,35 @@ empty_evaluation <- function() {
   empty <- data.frame(model             = character(), 
                       formula           = character(), 
                       accuracy          = numeric(0),
+                      error_rate        = numeric(0),
                       elapsed_time_secs = numeric(0),
                       stringsAsFactors=FALSE)
   return(empty)
 }
 
-evaluate_model <- function(formula, model_builder, prediction_column, train_data, test_data) {
+evaluate_model <- function(formula, model_builder, prediction_column, train_data, cross_validation_data) {
   tic()
   builder <- model_builder()
   model <- builder$build(formula, train_data)
-  predictions <- builder$predictions(model, test_data)
-  confusion <- confusionMatrix(data = predictions, reference = test_data[, prediction_column])
+  predictions <- builder$predictions(model, cross_validation_data)
+  confusion <- confusionMatrix(data = predictions, reference = cross_validation_data[, prediction_column])
   garbage <- capture.output(exec_time <- toc())
   evaluation <- data.frame(model             = builder$name, 
                            formula           = formula_name(formula),
                            accuracy          = accuracy(confusion), 
+                           error_rate        = 1 - accuracy(confusion),
                            elapsed_time_secs = (exec_time$toc - exec_time$tic),
                            stringsAsFactors=FALSE)
   return(evaluation)
 }
 
-evaluate_models <- function(formulas, model_builders, prediction_column, train_data, test_data) {
+evaluate_models <- function(formulas, model_builders, prediction_column, train_data, cross_validation_data) {
   evaluations <- empty_evaluation()
 
   for (model_builder in model_builders) {
     for (formula in formulas) {
       set.seed(SEED)
-      evaluation <- evaluate_model(formula, model_builder, prediction_column, train_data, test_data)
+      evaluation <- evaluate_model(formula, model_builder, prediction_column, train_data, cross_validation_data)
       evaluations <- bind_rows(evaluations, evaluation)
     }
   }
@@ -632,16 +636,18 @@ Let's try to evaluate a couple of models now. We need `X` to identify each recor
 set.seed(SEED)
 train_idx  <- createDataPartition(training$classe, p = 0.6, list = FALSE, times = 1)
 train_data <- training[train_idx, ]
-test_data  <- training[-train_idx, ]
+cross_validation_data  <- training[-train_idx, ]
 
 formulas <- c(classe ~ . - X)
 models <- c(random_forest_builder, svm_builder, decision_tree_builder, random_forest_k_fold_cross_validation_builder)
-evaluate_models(formulas, models, "classe", train_data, test_data)
+evaluate_models(formulas, models, "classe", train_data, cross_validation_data)
 ```
 
 <br/>
+Notice that I'm breaking the origin training data-set into a new training (`train_data`, let's called "sub-training") and cross validation data-sets. The error rate showed in the output is a good estimate of the out-of-sample error in the testing data-set, given that is calculated over cross validation data, which doesn't share any records with the sub-training data-set.
+
 You might notice that I have a single evaluation function that can evaluate any model for any package (as long a create a model builder object that follows the pre-defined interface).
-Also note that I'm breaking the training data into `train_data` and `test_data`, given that the provided testing data-set isn't labeled.
+Also note that I'm breaking the training data into `train_data` and `cross_validation_data`, given that the provided testing data-set isn't labeled.
 
 From the evaluation results, random forest (from the "randomForest" package) performed the best. I have also used random forest with [k-fold cross validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)), which took almost 20 minutes to complete and performed worst than the first. I guess it could be improved by increasing k, but it would make the creation of the classifier much slower. It seems like the default values of `ntree` (500) and `mtry` (5) for the "randomForest" trainer do a good enough job.
 
@@ -680,7 +686,7 @@ dumbbell_formula <- classe~roll_dumbbell+pitch_dumbbell+yaw_dumbbell+total_accel
 ```{r, results="asis"}
 formulas <- c(belt_formula, arm_formula, forearm_formula, dumbbell_formula)
 models <- c(random_forest_builder)
-evaluate_models(formulas, models, "classe", train_data, test_data)
+evaluate_models(formulas, models, "classe", train_data, cross_validation_data)
 ```
 
 #### Features Grouped by Type of Measurement
@@ -711,7 +717,7 @@ accel_formula <- classe~accel_belt_x+accel_belt_y+accel_belt_z+
 
 ```{r, results="asis"}
 formulas <- c(roll_pitch_yaw_formula, total_accel_formula, gyros_formula, magnet_formula, accel_formula)
-evaluate_models(formulas, models, "classe", train_data, test_data)
+evaluate_models(formulas, models, "classe", train_data, cross_validation_data)
 ```
 
 #### Combining Features from Different Groups
@@ -738,7 +744,7 @@ roll_pitch_yaw_magnet_formula <- classe~roll_belt+pitch_belt+yaw_belt+
 
 ```{r, results="asis"}
 formulas <- c(belt_forearm_formula, roll_pitch_yaw_magnet_formula)
-evaluate_models(formulas, models, "classe", train_data, test_data)
+evaluate_models(formulas, models, "classe", train_data, cross_validation_data)
 ```
 
 <br/>
