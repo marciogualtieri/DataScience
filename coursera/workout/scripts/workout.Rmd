@@ -98,7 +98,7 @@ testing  <- read.csv('../input/pml-testing.csv', na.strings=c("NA", "NULL", ""),
 ```
 
 <br/>
-I also want to create a data-set which has all records. There's an odd thing about these data-sets though: The record ID (`X`) starts over from one in the testing data-set, suggesting that the testing and training data-set were not once a whole data-set. `X` is only an index and therefore has no value as a predictor and for this reason I'm going to add the new column `record_id` so we can distinguish training and testing records more easily:
+I also want to create a data-set which has all records. There's an odd thing about these data-sets though: The record ID (`X`) starts over from one in the testing data-set, suggesting that the testing and training data-set were not once a whole data-set. I'm going to add the new column `record_id` so we can distinguish training and testing records more easily:
 
 ```{r}
 training_rows <- nrow(training)
@@ -288,7 +288,7 @@ If you extract windows for different `num_window` values, you will find this ver
 
 ## Combining `raw_timestamp_part_1`  and `raw_timestamp_par_2`
 
-I'm going to create some additional columns, which will make data a bit easier to work with There's no need to keep the timestamp separated into two different columns (that's a limitation from the motion sensor apparatus):
+I'm going to create some additional columns, which will make data a bit easier to work with. For starters, there's no need to keep the timestamp separated into two different columns (that's a limitation from the motion sensor apparatus):
 
 ```{r}
 add_timestamp <- function(data) {
