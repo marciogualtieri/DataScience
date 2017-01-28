@@ -1,11 +1,11 @@
 ---
 title: 'Workout: Dumbbell Lift Classification'
 output:
-  html_notebook:
+  html_document:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
-  html_document:
+  html_notebook:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
@@ -649,7 +649,7 @@ Notice that I'm breaking the origin training data-set into a new training (`trai
 You might notice that I have a single evaluation function that can evaluate any model for any package (as long a create a model builder object that follows the pre-defined interface).
 Also note that I'm breaking the training data into `train_data` and `cross_validation_data`, given that the provided testing data-set isn't labeled.
 
-From the evaluation results, random forest (from the "randomForest" package) performed the best. I have also used random forest with [k-fold cross validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)), which took almost 20 minutes to complete and performed worst than the first. I guess it could be improved by increasing k, but it would make the creation of the classifier much slower. It seems like the default values of `ntree` (500) and `mtry` (5) for the "randomForest" trainer do a good enough job.
+From the evaluation results, random forest (from the "randomForest" package) performed the best. I have also used random forest with [k-fold cross validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)), which took almost 20 minutes to complete ("k" equal to 5) and performed worst than the first. I guess it could be improved by increasing k, but it would make the creation of the classifier much slower. It seems like the default values of `ntree` (500) and `mtry` (5) for the "randomForest" trainer do a good enough job.
 
 ### Evaluating with Subsets of Features
 
