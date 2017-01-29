@@ -552,7 +552,7 @@ decision_tree_builder <- function() {
 }
 
 random_forest_k_fold_cross_validation_builder <- function() {
-  name <- "Random Forest with Cross Validation (caret package)"
+  name <- "Random Forest with K-Fold Cross Validation (caret package)"
   
   build <- function(formula, data) {
     control <- trainControl(method = "cv", number = 5)
@@ -821,3 +821,4 @@ An interesting thing to notice about our data is the amount of measurements take
 Also, looking at the scatter plots you will notice that the data is not that smooth and is quite noisy.
 
 In practice measurement apparatus are never perfect and the best ones might be quite expensive. You get more bang for your buck by using many low quality inexpensive apparatus than few high quality expensive ones. Even though the quality of our measurements is not that great, we can compensate by taking more measurements (from different sources) and still do very well in the classification.
+

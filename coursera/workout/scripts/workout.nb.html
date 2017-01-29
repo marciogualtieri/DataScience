@@ -4639,7 +4639,7 @@ decision_tree_builder &lt;- function() {
   return(list(name=name, build=build, predictions=predictions))
 }
 random_forest_k_fold_cross_validation_builder &lt;- function() {
-  name &lt;- &quot;Random Forest with Cross Validation (caret package)&quot;
+  name &lt;- &quot;Random Forest with K-Fold Cross Validation (caret package)&quot;
   
   build &lt;- function(formula, data) {
     control &lt;- trainControl(method = &quot;cv&quot;, number = 5)
@@ -4813,7 +4813,7 @@ classe ~ . - X
 4
 </td>
 <td>
-Random Forest with Cross Validation (caret package)
+Random Forest with K-Fold Cross Validation (caret package)
 </td>
 <td>
 classe ~ . - X
