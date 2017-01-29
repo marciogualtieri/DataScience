@@ -494,7 +494,7 @@ One thing you will noticed with machine learning packages is that they don't qui
 |`build(formula, data)`      |Builds a model from a formula and training data.        |
 |`predictions(model, data)`  |Generate predictions for the input data using the model.|
 
-R doesn't quite support [OOP](https://en.wikipedia.org/wiki/Object-oriented_programming), but you can emulate some OOP principles like [encapsulation](https://en.wikipedia.org/wiki/Encapsulation_(computer_programming). So I have encapsulated `build()` and `predictions()` inside an object. I also have include the attribute `name`, so we can easy identify the model.
+R doesn't quite support [OOP](https://en.wikipedia.org/wiki/Object-oriented_programming), but you can emulate some OOP principles like [encapsulation](https://en.wikipedia.org/wiki/Encapsulation_(computer_programming)), so I have encapsulated `build()` and `predictions()` inside an object. I also have included the attribute `name`, so we can easy identify the model.
 
 In short, what you need to do is create a function that follows this template:
 
