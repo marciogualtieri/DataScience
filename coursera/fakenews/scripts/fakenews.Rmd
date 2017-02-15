@@ -1,0 +1,496 @@
+---
+title: 'Fake News Proliferation: An Interactive Graphical Exploration'
+author: "Marcio Gualtieri"
+date: "13 February 2017"
+output:
+  html_notebook:
+    css: ../styles/style.css
+    toc: yes
+    toc_depth: 4
+  html_document:
+    css: ../styles/style.css
+    toc: yes
+    toc_depth: 4
+---
+
+# Overview
+
+The data used in this notebook has been taken from a survey performed by [BuzzFeed](https://www.buzzfeed.com/), which attempted to measure how effectual is the proliferation of fake news in different states in the United States. The original data can be found [here](https://github.com/BuzzFeedNews/2016-12-fake-news-survey) and the article that makes use of the data [here](https://www.buzzfeed.com/craigsilverman/fake-news-survey). 
+
+After reading the article, I noticed that they could have used some interactivity in the graphs. They needed a somehow large number of static graphs to express their results. They could have been equally expressive with a much smaller number of interactive graphs, thus my choice of using this data-set to showcase my [leaflet](http://leafletjs.com/) skills.
+
+This data-set required quite a bit of work, so if you are only interested in the graphical exploration, you can skip to the ["All Cleaned-up Data-set"](#allcleanedupdataset) section. 
+
+
+# Installing the Required Packages
+
+You might need to install the following packages if you don't already have them:
+
+```{r, eval = FALSE}
+install.packages("xtable")
+install.packages("dplyr")
+install.packages("plyr")
+install.packages("stringr")
+install.packages("leaflet")
+install.packages("rgdal")
+install.packages("raster")
+install.packages("RColorBrewer")
+install.packages("shiny")
+```
+
+# Importing the Required Packages
+
+Once the libraries are installed, they need to be loaded as follows:
+
+```{r}
+suppressMessages(library(xtable))                        # Pretty printing dataframes
+suppressMessages(library(plyr, warn.conflicts = FALSE))  # Manipulating dataframes
+suppressMessages(library(dplyr, warn.conflicts = FALSE))
+suppressMessages(library(stringr))                       # Manipulating strings
+suppressMessages(library(leaflet))                       # Interactive graphs
+suppressMessages(library(rgdal))
+suppressMessages(library(raster))                        # Loading geo-spacial data
+suppressMessages(library(RColorBrewer))                  # Preview palletes
+suppressMessages(library(sp))
+suppressMessages(library(shiny))
+```
+
+# Loading Data
+
+## Reading CSV Files
+
+Let's first load the data-sets:
+
+```{r}
+data <- read.csv("../input/raw-data.csv", na.strings=c("NA", "NULL", ""), stringsAsFactors = FALSE)
+headlines <- read.csv("../input/headlines.csv", na.strings=c("NA", "NULL", ""), stringsAsFactors = FALSE)
+```
+
+## Taking a Sample
+
+```{r, results="asis"}
+render_table_in_viewer_pane <- function(data, digits) {
+  html <- print(xtable(data, digits = digits), type = "html", print.results=FALSE)
+  temp <- tempfile(fileext = ".html")
+  cat(html, file = temp)
+  rstudioapi::viewer(temp)
+}
+
+render_table <- function(data, digits = 2) {
+  render_table_in_viewer_pane(data, digits)
+  print(xtable(data, digits = digits), type = "html")
+}
+
+sample_data_frame <- function(data, size) {
+  sample_index <- sample(1:nrow(data), size)
+  return(data[sample_index, ])
+}
+
+render_table(sample_data_frame(data, 6))
+```
+
+## Record Counting
+
+```{r, results="asis"}
+data_count <- function(data) {
+  output <-               data.frame(measurement = "records", count = nrow(data))
+  output <- rbind(output, data.frame(measurement = "variables", count = length(names(data))))
+  return(output)
+}
+
+render_table(data_count(data))
+```
+
+# Missing Data
+
+```{r, results="asis"}
+missing_summary <- function(data) {
+  count <- data %>% summarise_each(funs(sum(is.na(.))))
+  output <- data.frame(variable = names(count), missing_count = t(count))
+  rownames(output) <- 1:nrow(output)
+  output <- output[output$missing_count > 0, ]
+  return(output)
+}
+
+missing <- missing_summary(data[, !names(data) %in% c("classe") ])
+render_table(missing)
+```
+
+Quite a bit of missing data here. We will remove most of these columns in the next section.
+
+# Data Cleanup
+
+The headlines surveyed are the following:
+
+```{r, results="asis"}
+render_table(headlines)
+```
+
+<br/>
+These are not available as a data-set, so I have built a file (`headlines.csv`) with this data. Given that is a reasonable amount of data, I believe that creating a `*.csv` file is cleaner than using code to create a data frame.
+
+There are correspondent columns in the data-set for each of the headlines, that is, one for each "A", "B", "C", etc.
+
+|Pattern                                            |Measurement|Values                                                                                            |
+|---------------------------------------------------|-----------|--------------------------------------------------------------------------------------------------|
+|`(LOOPDWD7_DWD8_)[A-K](_DWD7)`                     |Recall     |"yes" [I remember the headline], "no" and "unsure".                                               |
+|`(LOOPDWD7_DWD8_)[A-K](_DWD8)`                     |Accuracy   |[the claim in the headline is] "somewhat accurate", "not very accurate" and "not at all accurate".|
+
+The actual recall and accuracy values are encoded as numbers though, so follows data frames mapping each value to its correspondent code.
+
+Recall codes:
+
+```{r, results="asis"}
+options <- c("yes", "no", "unsure")
+recalls <- data.frame(id = 1:length(options), recall = options)
+render_table(recalls)
+```
+
+<br/>
+Accuracy codes:
+
+```{r, results="asis"}
+options <- c("very accurate", "somewhat accurate", "not very accurate", "not at all accurate")
+accuracies <- data.frame(id = 1:length(options), accuracy = options)
+render_table(accuracies)
+```
+
+<br/>
+They are also survived on the social media 
+
+Let's try to analyze some columns which migh be interesting. First of all, recall, accuracy and order:
+
+```{r}
+recal_variables_indexes <- grep("(LOOPDWD7_DWD8_)[A-K](_DWD7)", names(data))
+accuracy_variables_indexes <- grep("(LOOPDWD7_DWD8_)[A-K](_DWD8)", names(data))
+```
+
+|Variable                            |Value                                                                                                                  |
+|------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+|ID                                  |User ID.                                                                                                               |
+|resp_age                            |Responder's age.                                                                                                       |
+|resp_gender                         |Responder's gender, male: 1 or female: 2.                                                                              |
+|HCAL_REGION1_Label_US               |U.S. states, string.                                                                                                   |
+|HCAL_STDREGION_4CODES_Label_US      |U.S. regions, string.                                                                                                  |
+|Weightvar                           |That's the weighting adjustment, to compensate for oversampling of any group.                                          |
+|DP_INCOME                           |Income bands, as per data frame defined below.                                                                         |
+|DP_EDUCATION_BAN                    |Education bands, as per data frame defined below.                                                                      |
+|DP_ETHNICITY_BAN                    |Ethnicity, as per data frame defined below.                                                                            |
+|DWD1                                |Political Afiliation, as per data frame defined below.                                                                 |
+|DWD6                                |Presidential candidate, as per data frame defined below.                                                               |
+|`(GRID_DWD11_)([1-9][0-9]*)(_DWD11)`|Scores for news sources, 1-15 representing sources as per data frame defined below. 1-4 scores as per data frame below.|
+
+
+```{r}
+news_sources_score_variables_indexes <- grep("(GRID_DWD11_)([1-9][0-9]*)(_DWD11)", names(data))
+news_sources_score_variables <- names(data)[news_sources_score_variables_indexes]
+```
+
+Many of the variable values are encoded as numbers though, so follows data frames mapping each value to its correspondent code.
+
+```{r, results="asis"}
+options <- c("Less than $25,000", "$25,000 to $34,999", "$35,000 to $49,999", "$50,000 to $74,999", "$75,000 to $99,999", "$100,000 to $149,999", "$150,000 or more")
+income_bands <- data.frame(id = 1:length(options), income = options)
+render_table(income_bands)
+```
+
+```{r, results="asis"}
+options <- c("Less than high school", "High school graduate (includes equivalency)", "Some college, no degree", "Associate's degree", "Bachelor's degree", "Ph.D.", "Graduate or professional degree")
+education_bands <- data.frame(id = 1:length(options), education = options)
+render_table(education_bands)
+```
+
+```{r, results="asis"}
+options <- c("White", "Black or African American", "Other race")
+ethnicities <- data.frame(id = 1:length(options), ethnicity = options)
+render_table(ethnicities)
+```
+
+```{r, results="asis"}
+options <- c("Democrat", "Republican", "Independent", "Other")
+political_afiliations <- data.frame(id = 1:length(options), political_afiliation = options)
+render_table(political_afiliations)
+```
+
+```{r, results="asis"}
+options <- c("Hillary Clinton", "Donald Trump", "Gary Johnson", "Jill Stein", "Other")
+presidential_candidates <- data.frame(id = 1:length(options), presidential_candidate = options)
+render_table(presidential_candidates)
+```
+
+```{r, results="asis"}
+options <- c("Is a minor source of news for me", "Is rarely a source of news for me", "Is never a source of news for me", "I am not familiar with this news source")
+news_sources_scores <- data.frame(id = 1:length(options), news_source_score = options)
+render_table(news_sources_scores)
+```
+
+```{r, results="asis"}
+options <- c("BuzzFeed", "Huffington Post", "New York Times", "Facebook", "Twitter", "Snapchat", "VICE", "CNN", "Vox", "Business Insider", "Washington Post", "Google News", "Yahoo News", "Drudge Report", "Fox News")
+news_sources <- data.frame(id = 1:length(options), news_source = options)
+render_table(news_sources)
+```
+
+<br/>
+I'm going to start by removing columns that are not required at the moment:
+
+```{r}
+column_index <- function(name, data) {
+  grep(paste0("^", name, "$"), colnames(data))
+}
+
+demographic_variables <- c("resp_age", "HCAL_REGION1_Label_US", "HCAL_STDREGION_4CODES_Label_US", "DP_INCOME", "DP_EDUCATION_BAN", "DP_ETHNICITY_BAN", "DWD1", "DWD6")
+demographic_variable_indexes <- sapply(demographic_variables, column_index, data = data)
+
+useful_columns <- c(demographic_variable_indexes,
+                    recal_variables_indexes,
+                    accuracy_variables_indexes,
+                    news_sources_score_variables_indexes)
+
+data <- data[, useful_columns]
+```
+
+I'm going to decode these variable names and values (from the numeric code to description string) so they are easier to read:
+
+```{r}
+create_key_value_pairs <- function(keys, values) {
+  pairs <- values
+  names(pairs) <- keys
+  return(pairs)
+}
+
+decode_column <- function(data, codes, column) {
+  joint <- create_key_value_pairs(c(column), c("id"))
+  data <- left_join(data, codes, by = joint)
+  data <- data[, ! names(data) %in% c(column)]
+  return(data)
+}
+
+data <- decode_column(data, income_bands, "DP_INCOME")
+data <- decode_column(data, education_bands, "DP_EDUCATION_BAN")
+data <- decode_column(data, ethnicities, "DP_ETHNICITY_BAN")
+data <- decode_column(data, political_afiliations, "DWD1")
+data <- decode_column(data, presidential_candidates, "DWD6")
+```
+
+Some of the variables only require a change of name, decoding not necessary:
+
+```{r}
+data <- plyr::rename(data, c("resp_age"="age", "HCAL_REGION1_Label_US"="state", "HCAL_STDREGION_4CODES_Label_US"="region"))
+```
+
+Recalls, accuracies and news sources are a bit more complicated case, so I have created functions with the purpose of decoding their values and renaming them.
+
+First recall:
+
+```{r}
+rename_columns <- function(data, from_names, to_names) {
+  renaming <- create_key_value_pairs(from_names, to_names)
+  data <- plyr::rename(data, renaming)
+  return(data)
+}
+
+rename_headline_column <- function(data, from_name, to_prefix, headline_code) {
+  to_column <- paste0(to_prefix, "_", headline_code)
+  data <- rename_columns(data, c(to_prefix), c(to_column))
+  data <- data[, ! names(data) %in% c(from_name)]
+  return(data)
+}
+
+rebuild_column <- function(data, codes, headline_code, prefix, suffix, to_prefix) {
+  column <- paste0(prefix, headline_code, suffix)
+  joint <- create_key_value_pairs(c(column), c("id"))
+  full_join(data, recalls, by = joint)
+  data <- full_join(data, codes, by = joint)
+  data <- rename_headline_column(data, column, to_prefix, headline_code)
+  return(data)
+}
+
+rebuild_recall_columns <- function(data) {
+  for (headline_code in headlines$headline_id) {
+    data <- rebuild_column(data = data, codes = recalls, headline_code, prefix = "LOOPDWD7_DWD8_", suffix = "_DWD7", to_prefix = "recall")
+  }
+  return(data)
+}
+
+data <- rebuild_recall_columns(data)
+```
+
+Then accuracy:
+
+```{r}
+rebuild_accuracy_columns <- function(data) {
+  for (headline_code in headlines$headline_id) {
+    data <- rebuild_column(data = data, codes = accuracies, headline_code, prefix = "LOOPDWD7_DWD8_", suffix = "_DWD8", to_prefix = "accuracy")
+  }
+  return(data)
+}
+
+data <- rebuild_accuracy_columns(data)
+```
+
+Then news sources:
+
+```{r}
+compute_news_source_variable_name <- function(string) paste0("score_", str_replace_all(string, "[^A-Za-z]", "_"))
+
+rename_news_source_column <- function(data, news_sources, column, news_source_variable_index) {
+  news_source_variable_name <- compute_news_source_variable_name(news_sources$news_source[news_source_variable_index])
+  data <- rename_columns(data, c("news_source_score"), c(news_source_variable_name))
+  data <- data[, ! names(data) %in% c(column)]
+  return(data)
+}
+
+rebuild_news_source_column <- function(data, news_source_variable_index) {
+  column <- paste0("GRID_DWD11_", news_source_variable_index, "_DWD11")
+  joint <- create_key_value_pairs(c(column), c("id"))
+  data <- full_join(data, news_sources_scores, by = joint)
+  data <- rename_news_source_column(data, news_sources, column, news_source_variable_index)
+  return(data)
+}
+
+rebuild_news_source_columns <- function(data) {
+  for(index in news_sources$id) {
+    data <- rebuild_news_source_column(data, index)
+  }
+  return(data)
+}
+
+data <- rebuild_news_source_columns(data)
+```
+
+# All Cleaned-up Data-set <a name="allcleanedupdataset"></a>
+
+Should be much more readable now. In the next sections we will compute the statistics and build our leaflet map.
+
+## Taking a Sample
+
+Let's now take a sample from the data-set and see what it looks like:
+
+```{r, results = "asis"}
+render_table(sample_data_frame(data, 6))
+```
+
+<br/>
+Here a look at the variables in the data-set if you didn't bother to go through the data cleanup section:
+
+```{r}
+str(data)
+```
+
+# Computing Statistics
+
+```{r}
+empty_statistics <- function() return(data.frame(accuracy = character(),
+                                                 state = character(),
+                                                 percentage = numeric(0),
+                                                 headline = character(),
+                                                 headline_status = character()))
+
+compute_state_percentages <- function(data, column) {
+  percentages <- plyr::count(data, vars=c(column, "state"))
+  percentages <- group_by_(percentages, "state") %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq)))
+  return(percentages)
+}
+
+add_headline <- function(data, headline_code) {
+    data$headline <- headlines$headline_value[headlines$headline_id == headline_code]
+    data$headline_status <- headlines$headline_status[headlines$headline_id == headline_code]
+    return(data)
+}
+
+state_column_data <- function(data, state, column) data[data$state == state & ! is.na(data[, column]), ]
+
+compute_state_headline_statistics <- function(data, state, headline_code) {
+  column <- paste0("accuracy_", headline_code)
+  state_data <- state_column_data(data, state, column)
+  if(nrow(state_data) == 0) return(empty_statistics())
+  percentages <- compute_state_percentages(data, column)
+  percentages <- add_headline(percentages, headline_code)
+  percentages <- rename_columns(percentages, c(column), c("accuracy"))
+  percentages <- percentages[!is.na(percentages$percentage), ]
+  return(percentages)
+}
+
+compute_statistics_per_state <- function(data) {
+  statistics <- empty_statistics()
+  for(state in unique(data$state)) {
+    for(headline_code in headlines$headline_id) {
+      state_headline_statistics <- compute_state_headline_statistics(data, state, headline_code)
+      statistics <- bind_rows(statistics, state_headline_statistics)
+    }
+  }
+  return(statistics)
+}
+
+news_state_statistics <- compute_statistics_per_state(data)
+
+news_state_statistics$correct_answer <- ifelse(news_state_statistics$headline_status == "Fake" & grepl("not", news_state_statistics$accuracy) | 
+                                               news_state_statistics$headline_status == "Real" & ! grepl("not", news_state_statistics$accuracy),
+                                               "yes", "no")
+
+
+compute_state_correct_answer_percentages <- function(statistics, state) {
+  state_data <- statistics[statistics$state == state, ]
+  percentages <- state_data %>% 
+                 group_by(state, correct_answer) %>% 
+                 summarise(freq = sum(freq))
+  percentages <- percentages[percentages$state == state, ]
+  percentages <- group_by_(percentages, "state") %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq)))
+  return(percentages)
+}
+
+compute_correct_answer_percentages_per_state <- function(statistics) {
+  percentages <- data.frame(state = character(), correct_answer = logical(0), freq = numeric(0), percentage = numeric(0))
+  for(state in unique(data$state)) {
+    percentage <- compute_state_correct_answer_percentages(statistics, state)
+    suppressWarnings(percentages <- bind_rows(percentages, percentage))
+  }
+  return(percentages[percentages$correct_answer == "no", c("state", "percentage")])
+}
+
+correct_answer_percentages_per_state <- compute_correct_answer_percentages_per_state(news_state_statistics)
+```
+
+# Loading Geo-coordinates
+
+```{r}
+state_name <- function(data, column, state) data[data$state == state, column]
+
+states <- shapefile("../input/cb_2015_us_state_20m/cb_2015_us_state_20m.shp")
+
+states$color <- 1:nrow(states)
+states_centers <- read.csv("../input/states_centers.csv", na.strings=c("NA", "NULL", ""), stringsAsFactors = FALSE)
+states$latitude <- sapply(states$NAME, state_name, data = states_centers, column = "latitude")
+states$longitude <- sapply(states$NAME, state_name, data = states_centers, column = "longitude")
+```
+
+# Graphical Exploration
+
+The leaflet plot in this section shows the percentage of people, who asked about the headlines below, could not tell which ones were real or fake:
+
+```{r, results="asis"}
+render_table(headlines)
+```
+
+<br/>
+If you click a particular U.S. state, you should see a popup with the percentage of times people answered a fake headline was real and vice-versa.
+
+```{r}
+build_popup <- function(data, states, state){
+  return(print(xtable(data[data$state == state, ]), type = "html", include.rownames=FALSE, print.results = FALSE))
+}
+
+build_states_popups <- function(data, states) 
+  sapply(states$NAME, build_popup, data = data, states = states)
+
+states$popup <- build_states_popups(correct_answer_percentages_per_state, states)
+
+leaflet(states, width = "100%") %>%
+  addPolygons(
+    stroke = TRUE, weight = 1, fillOpacity = 0.5, smoothFactor = 0.5,
+    color = "white",
+    fillColor = ~colorNumeric("Paired", states$color)(color),
+    popup = states$popup
+  ) %>%
+  setView(-95.7129, 37.0902, zoom = 4)
+```
