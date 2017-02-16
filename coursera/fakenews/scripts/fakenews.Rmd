@@ -543,7 +543,7 @@ build_overall_popup <- function(data, state){
 
 build_column_popup <- function(data, column, state){
   state_data <- data[data$state == state, ]
-  content <- paste0("<h3>", state, " (by ", column, ")</h3>")
+  content <- paste0("<h3>", state, "</h3>")
   column_values <- unique(state_data[[column]])
   for(column_value in column_values) {
     content <- paste0(content, "<p>", column_value, ": ", state_data$percentage[state_data[[column]] == column_value], "%")
