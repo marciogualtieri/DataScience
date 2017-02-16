@@ -3,11 +3,11 @@ title: 'Fake News Proliferation: An Interactive Graphical Exploration'
 author: "Marcio Gualtieri"
 date: "13 February 2017"
 output:
-  html_notebook:
+  html_document:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
-  html_document:
+  html_notebook:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
@@ -19,7 +19,7 @@ The data used in this notebook has been taken from a survey performed by [BuzzFe
 
 After reading the article, I noticed that they could have used some interactivity in the graphs. They needed a somehow large number of static graphs to express their results. They could have been equally expressive with a much smaller number of interactive graphs, thus my choice of using this data-set to showcase my [leaflet](http://leafletjs.com/) skills.
 
-This data-set required quite a bit of work, so if you are only interested in the graphical exploration, you can skip to the ["All Cleaned-up Data-set"](#allcleanedupdataset) section. 
+This data-set required quite a bit of work, so if you are only interested in  interactive graphs, you can skip to the [Graphical Exploration](#graphicalexploration) section. 
 
 
 # Installing the Required Packages
@@ -36,6 +36,7 @@ install.packages("rgdal")
 install.packages("raster")
 install.packages("RColorBrewer")
 install.packages("shiny")
+install.packages("reshape2")
 ```
 
 # Importing the Required Packages
@@ -43,6 +44,7 @@ install.packages("shiny")
 Once the libraries are installed, they need to be loaded as follows:
 
 ```{r}
+suppressMessages(library(sp))
 suppressMessages(library(xtable))                        # Pretty printing dataframes
 suppressMessages(library(plyr, warn.conflicts = FALSE))  # Manipulating dataframes
 suppressMessages(library(dplyr, warn.conflicts = FALSE))
@@ -51,8 +53,8 @@ suppressMessages(library(leaflet))                       # Interactive graphs
 suppressMessages(library(rgdal))
 suppressMessages(library(raster))                        # Loading geo-spacial data
 suppressMessages(library(RColorBrewer))                  # Preview palletes
-suppressMessages(library(sp))
 suppressMessages(library(shiny))
+suppressMessages(library(reshape2))                      # Reshape columns into rows
 ```
 
 # Loading Data
@@ -116,6 +118,7 @@ missing <- missing_summary(data[, !names(data) %in% c("classe") ])
 render_table(missing)
 ```
 
+<br/>
 Quite a bit of missing data here. We will remove most of these columns in the next section.
 
 # Data Cleanup
@@ -161,8 +164,10 @@ They are also survived on the social media
 Let's try to analyze some columns which migh be interesting. First of all, recall, accuracy and order:
 
 ```{r}
-recal_variables_indexes <- grep("(LOOPDWD7_DWD8_)[A-K](_DWD7)", names(data))
-accuracy_variables_indexes <- grep("(LOOPDWD7_DWD8_)[A-K](_DWD8)", names(data))
+variable_names <- function(data, pattern) names(data)[grep(pattern, names(data))]
+
+recall_variables <- function(data) variable_names(data, "(LOOPDWD7_DWD8_)[A-K](_DWD7)")
+accuracy_variables <- function(data) variable_names(data, "(LOOPDWD7_DWD8_)[A-K](_DWD8)")
 ```
 
 |Variable                            |Value                                                                                                                  |
@@ -182,8 +187,7 @@ accuracy_variables_indexes <- grep("(LOOPDWD7_DWD8_)[A-K](_DWD8)", names(data))
 
 
 ```{r}
-news_sources_score_variables_indexes <- grep("(GRID_DWD11_)([1-9][0-9]*)(_DWD11)", names(data))
-news_sources_score_variables <- names(data)[news_sources_score_variables_indexes]
+news_source_score_variables <- function(data) variable_names(data, "(GRID_DWD11_)([1-9][0-9]*)(_DWD11)")
 ```
 
 Many of the variable values are encoded as numbers though, so follows data frames mapping each value to its correspondent code.
@@ -208,18 +212,18 @@ render_table(ethnicities)
 
 ```{r, results="asis"}
 options <- c("Democrat", "Republican", "Independent", "Other")
-political_afiliations <- data.frame(id = 1:length(options), political_afiliation = options)
-render_table(political_afiliations)
+parties <- data.frame(id = 1:length(options), party = options)
+render_table(parties)
 ```
 
 ```{r, results="asis"}
 options <- c("Hillary Clinton", "Donald Trump", "Gary Johnson", "Jill Stein", "Other")
-presidential_candidates <- data.frame(id = 1:length(options), presidential_candidate = options)
-render_table(presidential_candidates)
+candidates <- data.frame(id = 1:length(options), candidate = options)
+render_table(candidates)
 ```
 
 ```{r, results="asis"}
-options <- c("Is a minor source of news for me", "Is rarely a source of news for me", "Is never a source of news for me", "I am not familiar with this news source")
+options <- c("Is a major source of news for me", "Is a minor source of news for me", "Is rarely a source of news for me", "Is never a source of news for me", "I am not familiar with this news source")
 news_sources_scores <- data.frame(id = 1:length(options), news_source_score = options)
 render_table(news_sources_scores)
 ```
@@ -239,12 +243,14 @@ column_index <- function(name, data) {
 }
 
 demographic_variables <- c("resp_age", "HCAL_REGION1_Label_US", "HCAL_STDREGION_4CODES_Label_US", "DP_INCOME", "DP_EDUCATION_BAN", "DP_ETHNICITY_BAN", "DWD1", "DWD6")
-demographic_variable_indexes <- sapply(demographic_variables, column_index, data = data)
 
-useful_columns <- c(demographic_variable_indexes,
-                    recal_variables_indexes,
-                    accuracy_variables_indexes,
-                    news_sources_score_variables_indexes)
+useful_columns <- c("ID",
+                     "Weightvar",
+                     demographic_variables,
+                     recall_variables(data),
+                     accuracy_variables(data),
+                     news_source_score_variables(data))
+
 
 data <- data[, useful_columns]
 ```
@@ -268,14 +274,18 @@ decode_column <- function(data, codes, column) {
 data <- decode_column(data, income_bands, "DP_INCOME")
 data <- decode_column(data, education_bands, "DP_EDUCATION_BAN")
 data <- decode_column(data, ethnicities, "DP_ETHNICITY_BAN")
-data <- decode_column(data, political_afiliations, "DWD1")
-data <- decode_column(data, presidential_candidates, "DWD6")
+data <- decode_column(data, parties, "DWD1")
+data <- decode_column(data, candidates, "DWD6")
 ```
 
 Some of the variables only require a change of name, decoding not necessary:
 
 ```{r}
 data <- plyr::rename(data, c("resp_age"="age", "HCAL_REGION1_Label_US"="state", "HCAL_STDREGION_4CODES_Label_US"="region"))
+demographic_variables <- c("age", "state", "region", "income", "ethnicity", "education", "party", "candidate")
+
+recall_variables <- function(data) variable_names(data, "recall_[A-K]")
+accuracy_variables <- function(data) variable_names(data, "accuracy_[A-K]")
 ```
 
 Recalls, accuracies and news sources are a bit more complicated case, so I have created functions with the purpose of decoding their values and renaming them.
@@ -358,7 +368,7 @@ rebuild_news_source_columns <- function(data) {
 data <- rebuild_news_source_columns(data)
 ```
 
-# All Cleaned-up Data-set <a name="allcleanedupdataset"></a>
+# All Cleaned-up Data-set
 
 Should be much more readable now. In the next sections we will compute the statistics and build our leaflet map.
 
@@ -377,94 +387,140 @@ Here a look at the variables in the data-set if you didn't bother to go through 
 str(data)
 ```
 
+# Breaking Recall, Accuracy & News Sources Scores
+
+For convinience, I'm going to break the original data into three, for recall, accuracy, and news souce score.
+
+## Recall & Accuracy
+
+```{r}
+extract_headline <- function(name, headlines) return(str_match_all(name, "(accuracy|recall)_([A-K])")[[1]][3])
+
+recall_data <- data[, c("ID", "Weightvar", demographic_variables, recall_variables(data))]
+accuracy_data <- data[, c("ID", "Weightvar", demographic_variables, accuracy_variables(data))]
+
+rebuild_column <- function(data, column) {
+  data <- melt(data, id.vars=c("ID", "Weightvar", demographic_variables))
+  data$variable <- sapply(data$variable, extract_headline)
+  data <- rename_columns(data, c("variable", "value"), c("headline_id", column))
+  return(data)
+}
+
+accuracy_data <- rebuild_column(accuracy_data, "accuracy")
+recall_data <- rebuild_column(recall_data, "recall")
+```
+
+For simplicity, I'm going to generate a binary variable for the responder guessing the headline veracity correctly or incorrectly:
+
+```{r}
+
+add_correct_answer <- function(data) {
+  data$guessed_correctly <- ifelse(data$headline_status == "Fake" & grepl("not", data$accuracy) | 
+                                   data$headline_status == "Real" & ! grepl("not", data$accuracy),
+                                   "yes", "no")
+  return(data)
+}
+
+accuracy_data <- left_join(accuracy_data, headlines, by = "headline_id")
+accuracy_data <- add_correct_answer(accuracy_data)
+```
+
+The same for the responder having heard the headline:
+
+```{r}
+add_seen_fake_headline <- function(data) {
+  data$seen_fake_headline <- ifelse(data$headline_status == "Fake" & grepl("yes", data$recall) ,"yes", "no")
+  data[data$headline_status == "Real", "seen_fake_headline"] <- NA
+  return(data)
+}
+
+recall_data <- left_join(recall_data, headlines, by = "headline_id")
+recall_data <- add_seen_fake_headline(recall_data)
+```
+
+## News source
+
+```{r}
+news_source_score_variables <- function(data) variable_names(data, "score_.+")
+
+extract_news_source <- function(name) {
+  name <- str_match_all(name, "score_(.+)")[[1]][2]
+  name <- str_replace_all(name, "_", " ")
+  return(name)
+}
+
+rebuild_column <- function(data) {
+  data <- data[, c("ID", "Weightvar", demographic_variables, news_source_score_variables(data))]
+  data <- melt(data, id.vars=c("ID", "Weightvar", demographic_variables))
+  data$variable <- sapply(data$variable, extract_news_source)
+  data <- rename_columns(data, c("variable", "value"), c("news_source", "news_source_score"))
+  return(data)
+}
+
+news_source_score_data <- rebuild_column(data)
+```
+
 # Computing Statistics
 
+## Accuracy
+
 ```{r}
-empty_statistics <- function() return(data.frame(accuracy = character(),
-                                                 state = character(),
-                                                 percentage = numeric(0),
-                                                 headline = character(),
-                                                 headline_status = character()))
-
-compute_state_percentages <- function(data, column) {
-  percentages <- plyr::count(data, vars=c(column, "state"))
-  percentages <- group_by_(percentages, "state") %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq)))
+compute_overall_percentages <- function(data) {
+  count_column <- "guessed_correctly"
+  counts <- group_by_(data, .dots = c("state", count_column)) %>% summarise(freq = sum(Weightvar))
+  percentages <- group_by_(counts, .dots = c("state")) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+  percentages <- percentages[percentages[[count_column]] == "no", ]
   return(percentages)
 }
 
-add_headline <- function(data, headline_code) {
-    data$headline <- headlines$headline_value[headlines$headline_id == headline_code]
-    data$headline_status <- headlines$headline_status[headlines$headline_id == headline_code]
-    return(data)
-}
-
-state_column_data <- function(data, state, column) data[data$state == state & ! is.na(data[, column]), ]
-
-compute_state_headline_statistics <- function(data, state, headline_code) {
-  column <- paste0("accuracy_", headline_code)
-  state_data <- state_column_data(data, state, column)
-  if(nrow(state_data) == 0) return(empty_statistics())
-  percentages <- compute_state_percentages(data, column)
-  percentages <- add_headline(percentages, headline_code)
-  percentages <- rename_columns(percentages, c(column), c("accuracy"))
-  percentages <- percentages[!is.na(percentages$percentage), ]
+compute_percentages <- function(data, column) {
+  count_column <- "guessed_correctly"
+  data <- data[!is.na(data[, column]), ]
+  counts <- plyr::count(data, vars = c("state", column, count_column))
+  percentages <- group_by_(counts, .dots = c("state", column)) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+  percentages <- percentages[percentages[[count_column]] == "no", ]
   return(percentages)
 }
 
-compute_statistics_per_state <- function(data) {
-  statistics <- empty_statistics()
-  for(state in unique(data$state)) {
-    for(headline_code in headlines$headline_id) {
-      state_headline_statistics <- compute_state_headline_statistics(data, state, headline_code)
-      statistics <- bind_rows(statistics, state_headline_statistics)
-    }
-  }
-  return(statistics)
-}
-
-news_state_statistics <- compute_statistics_per_state(data)
-
-news_state_statistics$correct_answer <- ifelse(news_state_statistics$headline_status == "Fake" & grepl("not", news_state_statistics$accuracy) | 
-                                               news_state_statistics$headline_status == "Real" & ! grepl("not", news_state_statistics$accuracy),
-                                               "yes", "no")
-
-
-compute_state_correct_answer_percentages <- function(statistics, state) {
-  state_data <- statistics[statistics$state == state, ]
-  percentages <- state_data %>% 
-                 group_by(state, correct_answer) %>% 
-                 summarise(freq = sum(freq))
-  percentages <- percentages[percentages$state == state, ]
-  percentages <- group_by_(percentages, "state") %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq)))
-  return(percentages)
-}
-
-compute_correct_answer_percentages_per_state <- function(statistics) {
-  percentages <- data.frame(state = character(), correct_answer = logical(0), freq = numeric(0), percentage = numeric(0))
-  for(state in unique(data$state)) {
-    percentage <- compute_state_correct_answer_percentages(statistics, state)
-    suppressWarnings(percentages <- bind_rows(percentages, percentage))
-  }
-  return(percentages[percentages$correct_answer == "no", c("state", "percentage")])
-}
-
-correct_answer_percentages_per_state <- compute_correct_answer_percentages_per_state(news_state_statistics)
+overall_percentages <- compute_overall_percentages(accuracy_data)
+education_percentages <- compute_percentages(accuracy_data, "education")
+party_percentages <- compute_percentages(accuracy_data, "party")
+candidate_percentages <- compute_percentages(accuracy_data, "candidate")
+income_percentages <- compute_percentages(accuracy_data, "income")
+ethnicity_percentages <- compute_percentages(accuracy_data, "ethnicity")
 ```
 
-# Loading Geo-coordinates
+## News Source
+
+For simplicity, I'm only going calculate the percentages for major source of news:
 
 ```{r}
-state_name <- function(data, column, state) data[data$state == state, column]
+counts <- group_by_(news_source_score_data[news_source_score_data$news_source_score == "Is a major source of news for me", ],
+                    .dots = c("state", "news_source")) %>% summarise(freq = sum(Weightvar))
+news_sources_percentages <- group_by_(counts, .dots = c("state")) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+```
 
+# Adding Geo-coordinates
+
+First of all, we need to add shape coordinates for the states, so we can create polygons for them:
+
+```{r}
 states <- shapefile("../input/cb_2015_us_state_20m/cb_2015_us_state_20m.shp")
-
-states$color <- 1:nrow(states)
-states_centers <- read.csv("../input/states_centers.csv", na.strings=c("NA", "NULL", ""), stringsAsFactors = FALSE)
-states$latitude <- sapply(states$NAME, state_name, data = states_centers, column = "latitude")
-states$longitude <- sapply(states$NAME, state_name, data = states_centers, column = "longitude")
 ```
 
-# Graphical Exploration
+Second, I'm going to add an ID for color, so each state polygon is assigned a different color:
+
+```{r}
+states$color <- 1:nrow(states)
+```
+
+Finally, we need to add coordinates for the center of each state for markers:
+
+```{r}
+states_centers <- read.csv("../input/states_centers.csv", na.strings=c("NA", "NULL", ""), stringsAsFactors = FALSE)
+```
+
+# Graphical Exploration <a name="graphicalexploration"></a>
 
 The leaflet plot in this section shows the percentage of people, who asked about the headlines below, could not tell which ones were real or fake:
 
@@ -473,24 +529,70 @@ render_table(headlines)
 ```
 
 <br/>
-If you click a particular U.S. state, you should see a popup with the percentage of times people answered a fake headline was real and vice-versa.
+If you click a particular U.S. state, you should see a popup with the percentage of times people answered a fake headline was real or the other way around.
+
+The following code create HTML popups for each state:
 
 ```{r}
-build_popup <- function(data, states, state){
-  return(print(xtable(data[data$state == state, ]), type = "html", include.rownames=FALSE, print.results = FALSE))
+build_overall_popup <- function(data, state){
+  state_data <- data[data$state == state, ]
+  content <- paste0("<h3>", state, " (overall)</h3>")
+  content <- paste0(content, "<p>", state_data$percentage, "%</p>")
+  return(content)
 }
 
-build_states_popups <- function(data, states) 
-  sapply(states$NAME, build_popup, data = data, states = states)
+build_column_popup <- function(data, column, state){
+  state_data <- data[data$state == state, ]
+  content <- paste0("<h3>", state, " (by ", column, ")</h3>")
+  column_values <- unique(state_data[[column]])
+  for(column_value in column_values) {
+    content <- paste0(content, "<p>", column_value, ": ", state_data$percentage[state_data[[column]] == column_value], "%</p>")
+  }
+  return(content)
+}
 
-states$popup <- build_states_popups(correct_answer_percentages_per_state, states)
+states$overall_popup <-sapply(states$NAME, build_overall_popup, data = overall_percentages)
+states$education_popup <-sapply(states$NAME, build_column_popup, data = education_percentages, column = "education")
+states$party_popup <-sapply(states$NAME, build_column_popup, data = party_percentages, column = "party")
+states$candidate_popup <-sapply(states$NAME, build_column_popup, data = candidate_percentages, column = "candidate")
+states$income_popup <-sapply(states$NAME, build_column_popup, data = income_percentages, column = "income")
+states$ethnicity_popup <-sapply(states$NAME, build_column_popup, data = ethnicity_percentages, column = "ethnicity")
+states$news_sources_popup <-sapply(states$NAME, build_column_popup, data = news_source_percentages, column = "news_source")
+```
+
+Finally, without much ado, here's the interactive plot:
+
+```{r}
+add_polygons <- function (map, states, column, group) {
+  map %>% addPolygons(
+    stroke = TRUE, weight = 2, fillOpacity = 0.3, smoothFactor = 0.1,
+    color = "white",
+    fillColor = ~colorNumeric("Paired", sample(states$color))(color),
+    popup = states[[column]], group = group
+  )
+}
+
+usa_longitude = -95.7129
+usa_latitude = 37.0902
 
 leaflet(states, width = "100%") %>%
-  addPolygons(
-    stroke = TRUE, weight = 1, fillOpacity = 0.5, smoothFactor = 0.5,
-    color = "white",
-    fillColor = ~colorNumeric("Paired", states$color)(color),
-    popup = states$popup
-  ) %>%
-  setView(-95.7129, 37.0902, zoom = 4)
+  setView(usa_longitude, usa_latitude, zoom = 4) %>%
+  addTiles() %>%
+  
+  add_polygons(states, "news_sources_popup", "Major News Source") %>%
+  
+  add_polygons(states, "overall_popup", "Tricked Overall") %>%
+  add_polygons(states, "education_popup", "Tricked by Education") %>%
+  add_polygons(states, "party_popup", "Tricked by Party") %>%
+  add_polygons(states, "candidate_popup", "Tricked ny Candidate") %>%
+  add_polygons(states, "income_popup", "Tricked by Income") %>%
+  add_polygons(states, "ethnicity_popup", "Tricked by Ethnicity") %>%
+
+  addLayersControl(
+    baseGroups = c("Major News Source", "Tricked Overall", "Tricked by Education", "Tricked by Party", "Tricked by Candidate", "Tricked by Income", "Tricked by Ethnicity"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
 ```
+
+
+Choose the type of statistics you want to see by clicking the correspondent radio box and then click the state on the U.S. map to get the statistic for the state.
