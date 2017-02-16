@@ -3,11 +3,11 @@ title: 'Fake News Proliferation: An Interactive Graphical Exploration'
 author: "Marcio Gualtieri"
 date: "13 February 2017"
 output:
-  html_document:
+  html_notebook:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
-  html_notebook:
+  html_document:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
@@ -546,7 +546,7 @@ build_column_popup <- function(data, column, state){
   content <- paste0("<h3>", state, " (by ", column, ")</h3>")
   column_values <- unique(state_data[[column]])
   for(column_value in column_values) {
-    content <- paste0(content, "<p>", column_value, ": ", state_data$percentage[state_data[[column]] == column_value], "%</p>")
+    content <- paste0(content, "<p>", column_value, ": ", state_data$percentage[state_data[[column]] == column_value], "%")
   }
   return(content)
 }
@@ -577,6 +577,7 @@ usa_latitude = 37.0902
 
 leaflet(states, width = "100%") %>%
   setView(usa_longitude, usa_latitude, zoom = 4) %>%
+  
   addTiles() %>%
   
   add_polygons(states, "news_sources_popup", "Major News Source") %>%
@@ -584,14 +585,15 @@ leaflet(states, width = "100%") %>%
   add_polygons(states, "overall_popup", "Tricked Overall") %>%
   add_polygons(states, "education_popup", "Tricked by Education") %>%
   add_polygons(states, "party_popup", "Tricked by Party") %>%
-  add_polygons(states, "candidate_popup", "Tricked ny Candidate") %>%
+  add_polygons(states, "candidate_popup", "Tricked by Candidate") %>%
   add_polygons(states, "income_popup", "Tricked by Income") %>%
   add_polygons(states, "ethnicity_popup", "Tricked by Ethnicity") %>%
 
   addLayersControl(
     baseGroups = c("Major News Source", "Tricked Overall", "Tricked by Education", "Tricked by Party", "Tricked by Candidate", "Tricked by Income", "Tricked by Ethnicity"),
     options = layersControlOptions(collapsed = FALSE)
-  )
+  ) %>%
+  showGroup(group = "Tricked Overall")
 ```
 
 
