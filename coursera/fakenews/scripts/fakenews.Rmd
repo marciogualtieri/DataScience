@@ -159,8 +159,6 @@ render_table(accuracies)
 ```
 
 <br/>
-They are also survived on the social media 
-
 Let's try to analyze some columns which migh be interesting. First of all, recall, accuracy and order:
 
 ```{r}
