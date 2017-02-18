@@ -15,7 +15,7 @@ output:
 
 # Overview
 
-The available data-set made available by [BuzzFeed](https://www.buzzfeed.com/) needed a somewhat extensive cleanup and for this reason I have created this notebook.
+The data-set made available by [BuzzFeed](https://www.buzzfeed.com/) needed a somewhat extensive cleanup and for this reason I have created this notebook.
 
 If you are only interested in the interactive graphs, you may go directly to the [presentation](../presentation/index.html).
 
