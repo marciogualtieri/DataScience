@@ -140,15 +140,15 @@ render_table(sample_data_frame(overall_accuracy_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 19:36:00 2017 -->
+<!-- Sat Feb 18 20:08:09 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> guessed_correctly </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Arkansas </td> <td> no </td> <td align="right">   6 </td> <td align="right"> 37.50 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Arizona </td> <td> no </td> <td align="right">  38 </td> <td align="right"> 38.00 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Wyoming </td> <td> no </td> <td align="right">   1 </td> <td align="right"> 50.00 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> North Carolina </td> <td> no </td> <td align="right">  28 </td> <td align="right"> 35.90 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> South Carolina </td> <td> no </td> <td align="right">  17 </td> <td align="right"> 36.96 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> Ohio </td> <td> no </td> <td align="right">  59 </td> <td align="right"> 37.11 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Texas </td> <td> no </td> <td align="right">  98 </td> <td align="right"> 38.43 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Louisiana </td> <td> no </td> <td align="right">  24 </td> <td align="right"> 42.11 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Virginia </td> <td> no </td> <td align="right">  52 </td> <td align="right"> 38.81 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Tennessee </td> <td> no </td> <td align="right">  30 </td> <td align="right"> 37.50 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Montana </td> <td> no </td> <td align="right">   3 </td> <td align="right"> 21.43 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Maine </td> <td> no </td> <td align="right">   5 </td> <td align="right"> 33.33 </td> </tr>
    </table>
 
 --- .class #id 
@@ -170,15 +170,15 @@ render_table(sample_data_frame(overall_recall_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 19:36:00 2017 -->
+<!-- Sat Feb 18 20:08:09 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> recall_fake_headline </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Connecticut </td> <td> yes </td> <td align="right">  13 </td> <td align="right"> 12.04 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Massachusetts </td> <td> yes </td> <td align="right">  26 </td> <td align="right"> 13.76 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Michigan </td> <td> yes </td> <td align="right">  25 </td> <td align="right"> 9.58 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Colorado </td> <td> yes </td> <td align="right">  29 </td> <td align="right"> 15.85 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> North Dakota </td> <td> yes </td> <td align="right">   3 </td> <td align="right"> 12.50 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> Arizona </td> <td> yes </td> <td align="right">  37 </td> <td align="right"> 16.44 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> California </td> <td> yes </td> <td align="right"> 162 </td> <td align="right"> 16.98 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Louisiana </td> <td> yes </td> <td align="right">  27 </td> <td align="right"> 29.03 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Florida </td> <td> yes </td> <td align="right"> 156 </td> <td align="right"> 21.76 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Idaho </td> <td> yes </td> <td align="right">  10 </td> <td align="right"> 20.83 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Nebraska </td> <td> yes </td> <td align="right">   5 </td> <td align="right"> 10.42 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Massachusetts </td> <td> yes </td> <td align="right">  26 </td> <td align="right"> 13.76 </td> </tr>
    </table>
 
 --- .class #id 
@@ -211,15 +211,15 @@ render_table(sample_data_frame(news_sources_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 19:36:00 2017 -->
+<!-- Sat Feb 18 20:08:09 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> news_source </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> California </td> <td> Facebook </td> <td align="right"> 70.21 </td> <td align="right"> 9.74 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Illinois </td> <td> Google News </td> <td align="right"> 24.84 </td> <td align="right"> 10.43 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> New Mexico </td> <td> Washington Post </td> <td align="right"> 1.18 </td> <td align="right"> 5.36 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Mississippi </td> <td> Fox News </td> <td align="right"> 10.58 </td> <td align="right"> 26.91 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> Nevada </td> <td> Google News </td> <td align="right"> 6.64 </td> <td align="right"> 10.94 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> New Jersey </td> <td> Huffington Post </td> <td align="right"> 8.21 </td> <td align="right"> 5.80 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Florida </td> <td> Washington Post </td> <td align="right"> 49.85 </td> <td align="right"> 7.24 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Tennessee </td> <td> Business Insider </td> <td align="right"> 4.67 </td> <td align="right"> 6.17 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> New York </td> <td> Huffington Post </td> <td align="right"> 39.29 </td> <td align="right"> 4.79 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Louisiana </td> <td> VICE </td> <td align="right"> 3.29 </td> <td align="right"> 4.25 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> California </td> <td> CNN </td> <td align="right"> 101.99 </td> <td align="right"> 14.14 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Tennessee </td> <td> VICE </td> <td align="right"> 1.50 </td> <td align="right"> 1.99 </td> </tr>
    </table>
 
 --- .class #id 
@@ -261,7 +261,7 @@ render_table(headlines)
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 19:36:01 2017 -->
+<!-- Sat Feb 18 20:08:09 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> headline_id </th> <th> headline_value </th> <th> headline_status </th> <th> fact_check_link </th>  </tr>
   <tr> <td align="right"> 1 </td> <td> A </td> <td> Pope Francis Shocks World Endorses Donald Trump for President Releases Statement </td> <td> Fake </td> <td> <a href=http://www.snopes.com/pope-francis-donald-trump-endorsement/>Snopes</a> </td> </tr>
@@ -307,20 +307,23 @@ build_column_popup <- function(data, column, state){
   }
   return(content)
 }
+```
 
+--- .class #id 
+
+The popup shows the correspondent percentages for the state when it's clicked on the map:
+
+
+```r
 states$accuracy_popup <-sapply(states$NAME, build_overall_popup, data = overall_accuracy_percentages)
 states$recall_popup <-sapply(states$NAME, build_overall_popup, data = overall_recall_percentages)
-
 states$news_sources_popup <-sapply(states$NAME, build_column_popup, data = news_sources_percentages, column = "news_source")
-
 states$education_popup <- sapply(states$NAME, build_column_popup, data = education_accuracy_percentages, column = "education")
 states$party_popup <-sapply(states$NAME, build_column_popup, data = party_accuracy_percentages, column = "party")
 states$candidate_popup <-sapply(states$NAME, build_column_popup, data = candidate_accuracy_percentages, column = "candidate")
 states$income_popup <-sapply(states$NAME, build_column_popup, data = income_accuracy_percentages, column = "income")
 states$ethnicity_popup <-sapply(states$NAME, build_column_popup, data = ethnicity_accuracy_percentages, column = "ethnicity")
 ```
-
-The popup shows the correspondent percentages for the state when it's clicked on the map.
 
 --- .class #id 
 

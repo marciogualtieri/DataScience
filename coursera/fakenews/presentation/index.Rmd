@@ -240,20 +240,22 @@ build_column_popup <- function(data, column, state){
   }
   return(content)
 }
+```
 
+--- .class #id 
+
+The popup shows the correspondent percentages for the state when it's clicked on the map:
+
+```{r}
 states$accuracy_popup <-sapply(states$NAME, build_overall_popup, data = overall_accuracy_percentages)
 states$recall_popup <-sapply(states$NAME, build_overall_popup, data = overall_recall_percentages)
-
 states$news_sources_popup <-sapply(states$NAME, build_column_popup, data = news_sources_percentages, column = "news_source")
-
 states$education_popup <- sapply(states$NAME, build_column_popup, data = education_accuracy_percentages, column = "education")
 states$party_popup <-sapply(states$NAME, build_column_popup, data = party_accuracy_percentages, column = "party")
 states$candidate_popup <-sapply(states$NAME, build_column_popup, data = candidate_accuracy_percentages, column = "candidate")
 states$income_popup <-sapply(states$NAME, build_column_popup, data = income_accuracy_percentages, column = "income")
 states$ethnicity_popup <-sapply(states$NAME, build_column_popup, data = ethnicity_accuracy_percentages, column = "ethnicity")
 ```
-
-The popup shows the correspondent percentages for the state when it's clicked on the map.
 
 --- .class #id 
 
