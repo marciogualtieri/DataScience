@@ -140,15 +140,15 @@ render_table(sample_data_frame(overall_accuracy_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 20:08:09 2017 -->
+<!-- Sat Feb 18 20:16:05 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> guessed_correctly </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Texas </td> <td> no </td> <td align="right">  98 </td> <td align="right"> 38.43 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Louisiana </td> <td> no </td> <td align="right">  24 </td> <td align="right"> 42.11 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Virginia </td> <td> no </td> <td align="right">  52 </td> <td align="right"> 38.81 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Tennessee </td> <td> no </td> <td align="right">  30 </td> <td align="right"> 37.50 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> Montana </td> <td> no </td> <td align="right">   3 </td> <td align="right"> 21.43 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> Maine </td> <td> no </td> <td align="right">   5 </td> <td align="right"> 33.33 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> New Jersey </td> <td> no </td> <td align="right">  33 </td> <td align="right"> 33.33 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Vermont </td> <td> no </td> <td align="right">   2 </td> <td align="right"> 66.67 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Maine </td> <td> no </td> <td align="right">   5 </td> <td align="right"> 33.33 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> New York </td> <td> no </td> <td align="right"> 229 </td> <td align="right"> 41.34 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Maryland </td> <td> no </td> <td align="right">  18 </td> <td align="right"> 29.03 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Texas </td> <td> no </td> <td align="right">  98 </td> <td align="right"> 38.43 </td> </tr>
    </table>
 
 --- .class #id 
@@ -170,15 +170,15 @@ render_table(sample_data_frame(overall_recall_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 20:08:09 2017 -->
+<!-- Sat Feb 18 20:16:05 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> recall_fake_headline </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> California </td> <td> yes </td> <td align="right"> 162 </td> <td align="right"> 16.98 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Louisiana </td> <td> yes </td> <td align="right">  27 </td> <td align="right"> 29.03 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Florida </td> <td> yes </td> <td align="right"> 156 </td> <td align="right"> 21.76 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Idaho </td> <td> yes </td> <td align="right">  10 </td> <td align="right"> 20.83 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> Nebraska </td> <td> yes </td> <td align="right">   5 </td> <td align="right"> 10.42 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> Massachusetts </td> <td> yes </td> <td align="right">  26 </td> <td align="right"> 13.76 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Kansas </td> <td> yes </td> <td align="right">   9 </td> <td align="right"> 17.65 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Pennsylvania </td> <td> yes </td> <td align="right">  54 </td> <td align="right"> 15.52 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Texas </td> <td> yes </td> <td align="right">  93 </td> <td align="right"> 16.49 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Oregon </td> <td> yes </td> <td align="right">  28 </td> <td align="right"> 17.95 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Arkansas </td> <td> yes </td> <td align="right">   6 </td> <td align="right"> 13.33 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> New Hampshire </td> <td> yes </td> <td align="right">   9 </td> <td align="right"> 18.75 </td> </tr>
    </table>
 
 --- .class #id 
@@ -211,15 +211,15 @@ render_table(sample_data_frame(news_sources_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 20:08:09 2017 -->
+<!-- Sat Feb 18 20:16:06 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> news_source </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Florida </td> <td> Washington Post </td> <td align="right"> 49.85 </td> <td align="right"> 7.24 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Tennessee </td> <td> Business Insider </td> <td align="right"> 4.67 </td> <td align="right"> 6.17 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> New York </td> <td> Huffington Post </td> <td align="right"> 39.29 </td> <td align="right"> 4.79 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Louisiana </td> <td> VICE </td> <td align="right"> 3.29 </td> <td align="right"> 4.25 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> California </td> <td> CNN </td> <td align="right"> 101.99 </td> <td align="right"> 14.14 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> Tennessee </td> <td> VICE </td> <td align="right"> 1.50 </td> <td align="right"> 1.99 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> South Dakota </td> <td> New York Times </td> <td align="right"> 0.70 </td> <td align="right"> 6.12 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Mississippi </td> <td> Drudge Report </td> <td align="right"> 0.71 </td> <td align="right"> 1.81 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Washington </td> <td> Snapchat </td> <td align="right"> 2.48 </td> <td align="right"> 3.18 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Mississippi </td> <td> CNN </td> <td align="right"> 6.77 </td> <td align="right"> 17.22 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> New York </td> <td> Snapchat </td> <td align="right"> 40.46 </td> <td align="right"> 4.93 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> California </td> <td> Vox </td> <td align="right"> 14.94 </td> <td align="right"> 2.07 </td> </tr>
    </table>
 
 --- .class #id 
@@ -261,7 +261,7 @@ render_table(headlines)
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 20:08:09 2017 -->
+<!-- Sat Feb 18 20:16:06 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> headline_id </th> <th> headline_value </th> <th> headline_status </th> <th> fact_check_link </th>  </tr>
   <tr> <td align="right"> 1 </td> <td> A </td> <td> Pope Francis Shocks World Endorses Donald Trump for President Releases Statement </td> <td> Fake </td> <td> <a href=http://www.snopes.com/pope-francis-donald-trump-endorsement/>Snopes</a> </td> </tr>

@@ -5,7 +5,8 @@ table { display: block;
         border: 1px solid black; }
 
 th { border: 1px solid black !important;
-    background-color:#E1CDAF; }
+     background-color:#E1CDAF;
+     font-size: 12px !important; }
 
 tr:nth-child(even) { background-color: #FFEBCD; }
 
