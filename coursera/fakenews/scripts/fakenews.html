@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fake News Proliferation: An Interactive Graphical Exploration</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Fake News Proliferation: An Interactive Graphical Exploration">
+  <meta name="author" content="Marcio Gualtieri">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="http://slidifylibraries2.googlecode.com/git/inst/libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="http://slidifylibraries2.googlecode.com/git/inst/libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="http://slidifylibraries2.googlecode.com/git/inst/libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="http://slidifylibraries2.googlecode.com/git/inst/libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="http://slidifylibraries2.googlecode.com/git/inst/libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="http://slidifylibraries2.googlecode.com/git/inst/libraries/frameworks/io2012/js/slides" 
+    src="http://slidifylibraries2.googlecode.com/git/inst/libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>Fake News Proliferation: An Interactive Graphical Exploration</h1>
+    <h2></h2>
+    <p>Marcio Gualtieri<br/></p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h1>Overview</h1>
+  </hgroup>
+  <article data-timings="">
+    <p>You will find a presentation with details about this analysis, including the interactive plots, <a href="../presentation/fakenews/">here</a>.</p>
+
+<p>This notebook was created with the purpose of cleaning up the data-set. <a href="https://www.buzzfeed.com/">BuzzFeed</a> did provide a simplified data-set with the data used in their article, but they removed a lot of information, including much of the demographic. For this reason, I used the raw data, which can be found <a href="https://github.com/BuzzFeedNews/2016-12-fake-news-survey">here</a>, in my analysis.</p>
+
+<h1>Installing the Required Packages</h1>
+
+<p>You might need to install the following packages if you don&#39;t already have them:</p>
+
+<pre><code class="r">install.packages(&quot;xtable&quot;)
+install.packages(&quot;dplyr&quot;)
+install.packages(&quot;plyr&quot;)
+install.packages(&quot;stringr&quot;)
+install.packages(&quot;reshape2&quot;)
+</code></pre>
+
+<h1>Importing the Required Packages</h1>
+
+<p>Once the libraries are installed, they need to be loaded as follows:</p>
+
+<pre><code class="r">suppressMessages(library(sp, quietly = TRUE))
+suppressMessages(library(xtable))                        # Pretty printing dataframes
+suppressMessages(library(plyr, warn.conflicts = FALSE))  # Manipulating dataframes
+suppressMessages(library(dplyr, warn.conflicts = FALSE))
+suppressMessages(library(stringr))                       # Manipulating strings
+suppressMessages(library(reshape2))                      # Reshape columns into rows
+</code></pre>
+
+<h1>Loading Data</h1>
+
+<h2>Reading CSV Files</h2>
+
+<p>Let&#39;s first load the data-sets:</p>
+
+<pre><code class="r">data &lt;- read.csv(&quot;../input/raw-data.csv&quot;, na.strings=c(&quot;NA&quot;, &quot;NULL&quot;, &quot;&quot;), stringsAsFactors = FALSE)
+headlines &lt;- read.csv(&quot;../input/headlines.csv&quot;, na.strings=c(&quot;NA&quot;, &quot;NULL&quot;, &quot;&quot;), stringsAsFactors = FALSE)
+</code></pre>
+
+<h2>Taking a Sample</h2>
+
+<pre><code class="r">render_table_in_viewer_pane &lt;- function(data, digits) {
+  html &lt;- print(xtable(data, digits = digits), type = &quot;html&quot;, print.results=FALSE)
+  temp &lt;- tempfile(fileext = &quot;.html&quot;)
+  cat(html, file = temp)
+  rstudioapi::viewer(temp)
+}
+
+render_table &lt;- function(data, digits = 2) {
+  render_table_in_viewer_pane(data, digits)
+  print(xtable(data, digits = digits), type = &quot;html&quot;)
+}
+
+sample_data_frame &lt;- function(data, size) {
+  sample_index &lt;- sample(1:nrow(data), size)
+  return(data[sample_index, ])
+}
+
+render_table(sample_data_frame(data, 6))
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<h2>Record Counting</h2>
+
+<pre><code class="r">data_count &lt;- function(data) {
+  output &lt;-               data.frame(measurement = &quot;records&quot;, count = nrow(data))
+  output &lt;- rbind(output, data.frame(measurement = &quot;variables&quot;, count = length(names(data))))
+  return(output)
+}
+
+render_table(data_count(data))
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<h1>Missing Data</h1>
+
+<pre><code class="r">missing_summary &lt;- function(data) {
+  count &lt;- data %&gt;% summarise_each(funs(sum(is.na(.))))
+  output &lt;- data.frame(variable = names(count), missing_count = t(count))
+  rownames(output) &lt;- 1:nrow(output)
+  output &lt;- output[output$missing_count &gt; 0, ]
+  return(output)
+}
+
+missing &lt;- missing_summary(data[, !names(data) %in% c(&quot;classe&quot;) ])
+render_table(missing)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<p><br/>
+Quite a bit of missing data here. We will remove most of these columns in the next section.</p>
+
+<h1>Data Cleanup</h1>
+
+<p>The headlines surveyed are the following:</p>
+
+<pre><code class="r">render_table(headlines)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<p><br/>
+These are not available as a data-set, so I have built a file (<code>headlines.csv</code>) with this data. Given that is a reasonable amount of data, I believe that creating a <code>*.csv</code> file is cleaner than using code to create a data frame.</p>
+
+<p>There are correspondent columns in the data-set for each of the headlines, that is, one for each &quot;A&quot;, &quot;B&quot;, &quot;C&quot;, etc.</p>
+
+<table><thead>
+<tr>
+<th>Pattern</th>
+<th>Measurement</th>
+<th>Values</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>(LOOPDWD7_DWD8_)[A-K](_DWD7)</code></td>
+<td>Recall</td>
+<td>&quot;yes&quot; [I remember the headline], &quot;no&quot; and &quot;unsure&quot;.</td>
+</tr>
+<tr>
+<td><code>(LOOPDWD7_DWD8_)[A-K](_DWD8)</code></td>
+<td>Accuracy</td>
+<td>[the claim in the headline is] &quot;somewhat accurate&quot;, &quot;not very accurate&quot; and &quot;not at all accurate&quot;.</td>
+</tr>
+</tbody></table>
+
+<p>The actual recall and accuracy values are encoded as numbers though, so follows data frames mapping each value to its correspondent code.</p>
+
+<p>Recall codes:</p>
+
+<pre><code class="r">options &lt;- c(&quot;yes&quot;, &quot;no&quot;, &quot;unsure&quot;)
+recalls &lt;- data.frame(id = 1:length(options), recall = options)
+render_table(recalls)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<p><br/>
+Accuracy codes:</p>
+
+<pre><code class="r">options &lt;- c(&quot;very accurate&quot;, &quot;somewhat accurate&quot;, &quot;not very accurate&quot;, &quot;not at all accurate&quot;)
+accuracies &lt;- data.frame(id = 1:length(options), accuracy = options)
+render_table(accuracies)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<p><br/>
+Let&#39;s try to analyze some columns which migh be interesting. First of all, recall, accuracy and order:</p>
+
+<pre><code class="r">variable_names &lt;- function(data, pattern) names(data)[grep(pattern, names(data))]
+
+recall_variables &lt;- function(data) variable_names(data, &quot;(LOOPDWD7_DWD8_)[A-K](_DWD7)&quot;)
+accuracy_variables &lt;- function(data) variable_names(data, &quot;(LOOPDWD7_DWD8_)[A-K](_DWD8)&quot;)
+</code></pre>
+
+<table><thead>
+<tr>
+<th>Variable</th>
+<th>Value</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>ID</td>
+<td>User ID.</td>
+</tr>
+<tr>
+<td>resp_age</td>
+<td>Responder&#39;s age.</td>
+</tr>
+<tr>
+<td>resp_gender</td>
+<td>Responder&#39;s gender, male: 1 or female: 2.</td>
+</tr>
+<tr>
+<td>HCAL_REGION1_Label_US</td>
+<td>U.S. states, string.</td>
+</tr>
+<tr>
+<td>HCAL_STDREGION_4CODES_Label_US</td>
+<td>U.S. regions, string.</td>
+</tr>
+<tr>
+<td>Weightvar</td>
+<td>That&#39;s the weighting adjustment, to compensate for oversampling of any group.</td>
+</tr>
+<tr>
+<td>DP_INCOME</td>
+<td>Income bands, as per data frame defined below.</td>
+</tr>
+<tr>
+<td>DP_EDUCATION_BAN</td>
+<td>Education bands, as per data frame defined below.</td>
+</tr>
+<tr>
+<td>DP_ETHNICITY_BAN</td>
+<td>Ethnicity, as per data frame defined below.</td>
+</tr>
+<tr>
+<td>DWD1</td>
+<td>Political Afiliation, as per data frame defined below.</td>
+</tr>
+<tr>
+<td>DWD6</td>
+<td>Presidential candidate, as per data frame defined below.</td>
+</tr>
+<tr>
+<td><code>(GRID_DWD11_)([1-9][0-9]*)(_DWD11)</code></td>
+<td>Scores for news sources, 1-15 representing sources as per data frame defined below. 1-4 scores as per data frame below.</td>
+</tr>
+</tbody></table>
+
+<pre><code class="r">news_source_score_variables &lt;- function(data) variable_names(data, &quot;(GRID_DWD11_)([1-9][0-9]*)(_DWD11)&quot;)
+</code></pre>
+
+<p>Many of the variable values are encoded as numbers though, so follows data frames mapping each value to its correspondent code.</p>
+
+<pre><code class="r">options &lt;- c(&quot;Less than $25,000&quot;, &quot;$25,000 to $34,999&quot;, &quot;$35,000 to $49,999&quot;, &quot;$50,000 to $74,999&quot;, &quot;$75,000 to $99,999&quot;, &quot;$100,000 to $149,999&quot;, &quot;$150,000 or more&quot;)
+income_bands &lt;- data.frame(id = 1:length(options), income = options)
+render_table(income_bands)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<pre><code class="r">options &lt;- c(&quot;Less than high school&quot;, &quot;High school graduate (includes equivalency)&quot;, &quot;Some college, no degree&quot;, &quot;Associate&#39;s degree&quot;, &quot;Bachelor&#39;s degree&quot;, &quot;Ph.D.&quot;, &quot;Graduate or professional degree&quot;)
+education_bands &lt;- data.frame(id = 1:length(options), education = options)
+render_table(education_bands)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<pre><code class="r">options &lt;- c(&quot;White&quot;, &quot;Black or African American&quot;, &quot;Other race&quot;)
+ethnicities &lt;- data.frame(id = 1:length(options), ethnicity = options)
+render_table(ethnicities)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<pre><code class="r">options &lt;- c(&quot;Democrat&quot;, &quot;Republican&quot;, &quot;Independent&quot;, &quot;Other&quot;)
+parties &lt;- data.frame(id = 1:length(options), party = options)
+render_table(parties)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<pre><code class="r">options &lt;- c(&quot;Hillary Clinton&quot;, &quot;Donald Trump&quot;, &quot;Gary Johnson&quot;, &quot;Jill Stein&quot;, &quot;Other&quot;)
+candidates &lt;- data.frame(id = 1:length(options), candidate = options)
+render_table(candidates)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<pre><code class="r">options &lt;- c(&quot;Is a major source of news for me&quot;, &quot;Is a minor source of news for me&quot;, &quot;Is rarely a source of news for me&quot;, &quot;Is never a source of news for me&quot;, &quot;I am not familiar with this news source&quot;)
+news_sources_scores &lt;- data.frame(id = 1:length(options), news_source_score = options)
+render_table(news_sources_scores)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<pre><code class="r">options &lt;- c(&quot;BuzzFeed&quot;, &quot;Huffington Post&quot;, &quot;New York Times&quot;, &quot;Facebook&quot;, &quot;Twitter&quot;, &quot;Snapchat&quot;, &quot;VICE&quot;, &quot;CNN&quot;, &quot;Vox&quot;, &quot;Business Insider&quot;, &quot;Washington Post&quot;, &quot;Google News&quot;, &quot;Yahoo News&quot;, &quot;Drudge Report&quot;, &quot;Fox News&quot;)
+news_sources &lt;- data.frame(id = 1:length(options), news_source = options)
+render_table(news_sources)
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<p><br/>
+I&#39;m going to start by removing columns that are not required at the moment:</p>
+
+<pre><code class="r">column_index &lt;- function(name, data) {
+  grep(paste0(&quot;^&quot;, name, &quot;$&quot;), colnames(data))
+}
+
+demographic_variables &lt;- c(&quot;resp_age&quot;, &quot;HCAL_REGION1_Label_US&quot;, &quot;HCAL_STDREGION_4CODES_Label_US&quot;, &quot;DP_INCOME&quot;, &quot;DP_EDUCATION_BAN&quot;, &quot;DP_ETHNICITY_BAN&quot;, &quot;DWD1&quot;, &quot;DWD6&quot;)
+
+useful_columns &lt;- c(&quot;ID&quot;,
+                     &quot;Weightvar&quot;,
+                     demographic_variables,
+                     recall_variables(data),
+                     accuracy_variables(data),
+                     news_source_score_variables(data))
+
+
+data &lt;- data[, useful_columns]
+</code></pre>
+
+<p>I&#39;m going to decode these variable names and values (from the numeric code to description string) so they are easier to read:</p>
+
+<pre><code class="r">create_key_value_pairs &lt;- function(keys, values) {
+  pairs &lt;- values
+  names(pairs) &lt;- keys
+  return(pairs)
+}
+
+decode_column &lt;- function(data, codes, column) {
+  joint &lt;- create_key_value_pairs(c(column), c(&quot;id&quot;))
+  data &lt;- left_join(data, codes, by = joint)
+  data &lt;- data[, ! names(data) %in% c(column)]
+  return(data)
+}
+
+data &lt;- decode_column(data, income_bands, &quot;DP_INCOME&quot;)
+data &lt;- decode_column(data, education_bands, &quot;DP_EDUCATION_BAN&quot;)
+data &lt;- decode_column(data, ethnicities, &quot;DP_ETHNICITY_BAN&quot;)
+data &lt;- decode_column(data, parties, &quot;DWD1&quot;)
+data &lt;- decode_column(data, candidates, &quot;DWD6&quot;)
+</code></pre>
+
+<p>Some of the variables only require a change of name, decoding not necessary:</p>
+
+<pre><code class="r">data &lt;- plyr::rename(data, c(&quot;resp_age&quot;=&quot;age&quot;, &quot;HCAL_REGION1_Label_US&quot;=&quot;state&quot;, &quot;HCAL_STDREGION_4CODES_Label_US&quot;=&quot;region&quot;))
+demographic_variables &lt;- c(&quot;age&quot;, &quot;state&quot;, &quot;region&quot;, &quot;income&quot;, &quot;ethnicity&quot;, &quot;education&quot;, &quot;party&quot;, &quot;candidate&quot;)
+
+recall_variables &lt;- function(data) variable_names(data, &quot;recall_[A-K]&quot;)
+accuracy_variables &lt;- function(data) variable_names(data, &quot;accuracy_[A-K]&quot;)
+</code></pre>
+
+<p>Recalls, accuracies and news sources are a bit more complicated case, so I have created functions with the purpose of decoding their values and renaming them.</p>
+
+<p>First recall:</p>
+
+<pre><code class="r">rename_columns &lt;- function(data, from_names, to_names) {
+  renaming &lt;- create_key_value_pairs(from_names, to_names)
+  data &lt;- plyr::rename(data, renaming)
+  return(data)
+}
+
+rename_headline_column &lt;- function(data, from_name, to_prefix, headline_code) {
+  to_column &lt;- paste0(to_prefix, &quot;_&quot;, headline_code)
+  data &lt;- rename_columns(data, c(to_prefix), c(to_column))
+  data &lt;- data[, ! names(data) %in% c(from_name)]
+  return(data)
+}
+
+rebuild_column &lt;- function(data, codes, headline_code, prefix, suffix, to_prefix) {
+  column &lt;- paste0(prefix, headline_code, suffix)
+  joint &lt;- create_key_value_pairs(c(column), c(&quot;id&quot;))
+  full_join(data, recalls, by = joint)
+  data &lt;- full_join(data, codes, by = joint)
+  data &lt;- rename_headline_column(data, column, to_prefix, headline_code)
+  return(data)
+}
+
+rebuild_recall_columns &lt;- function(data) {
+  for (headline_code in headlines$headline_id) {
+    data &lt;- rebuild_column(data = data, codes = recalls, headline_code, prefix = &quot;LOOPDWD7_DWD8_&quot;, suffix = &quot;_DWD7&quot;, to_prefix = &quot;recall&quot;)
+  }
+  return(data)
+}
+
+data &lt;- rebuild_recall_columns(data)
+</code></pre>
+
+<p>Then accuracy:</p>
+
+<pre><code class="r">rebuild_accuracy_columns &lt;- function(data) {
+  for (headline_code in headlines$headline_id) {
+    data &lt;- rebuild_column(data = data, codes = accuracies, headline_code, prefix = &quot;LOOPDWD7_DWD8_&quot;, suffix = &quot;_DWD8&quot;, to_prefix = &quot;accuracy&quot;)
+  }
+  return(data)
+}
+
+data &lt;- rebuild_accuracy_columns(data)
+</code></pre>
+
+<p>Then news sources:</p>
+
+<pre><code class="r">compute_news_source_variable_name &lt;- function(string) paste0(&quot;score_&quot;, str_replace_all(string, &quot;[^A-Za-z]&quot;, &quot;_&quot;))
+
+rename_news_source_column &lt;- function(data, news_sources, column, news_source_variable_index) {
+  news_source_variable_name &lt;- compute_news_source_variable_name(news_sources$news_source[news_source_variable_index])
+  data &lt;- rename_columns(data, c(&quot;news_source_score&quot;), c(news_source_variable_name))
+  data &lt;- data[, ! names(data) %in% c(column)]
+  return(data)
+}
+
+rebuild_news_source_column &lt;- function(data, news_source_variable_index) {
+  column &lt;- paste0(&quot;GRID_DWD11_&quot;, news_source_variable_index, &quot;_DWD11&quot;)
+  joint &lt;- create_key_value_pairs(c(column), c(&quot;id&quot;))
+  data &lt;- full_join(data, news_sources_scores, by = joint)
+  data &lt;- rename_news_source_column(data, news_sources, column, news_source_variable_index)
+  return(data)
+}
+
+rebuild_news_source_columns &lt;- function(data) {
+  for(index in news_sources$id) {
+    data &lt;- rebuild_news_source_column(data, index)
+  }
+  return(data)
+}
+
+data &lt;- rebuild_news_source_columns(data)
+</code></pre>
+
+<h1>All Cleaned-up Data-set</h1>
+
+<p>Should be much more readable now. In the next sections we will compute the statistics and build our leaflet map.</p>
+
+<h2>Taking a Sample</h2>
+
+<p>Let&#39;s now take a sample from the data-set and see what it looks like:</p>
+
+<pre><code class="r">render_table(sample_data_frame(data, 6))
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<p><br/>
+Here a look at the variables in the data-set if you didn&#39;t bother to go through the data cleanup section:</p>
+
+<pre><code class="r">str(data)
+</code></pre>
+
+<pre><code>## &#39;data.frame&#39;:    3015 obs. of  47 variables:
+##  $ ID                    : chr  &quot;1141122260&quot; &quot;1146768496&quot; &quot;1143062614&quot; &quot;C1439717771&quot; ...
+##  $ Weightvar             : num  0.708 0.585 1.274 1.514 0.698 ...
+##  $ age                   : int  31 31 34 47 35 69 43 59 25 20 ...
+##  $ state                 : chr  &quot;New York&quot; &quot;New Jersey&quot; &quot;New York&quot; &quot;California&quot; ...
+##  $ region                : chr  &quot;Northeast&quot; &quot;Northeast&quot; &quot;Northeast&quot; &quot;West&quot; ...
+##  $ income                : Factor w/ 7 levels &quot;$100,000 to $149,999&quot;,..: 5 4 6 7 4 4 5 4 5 6 ...
+##  $ education             : Factor w/ 7 levels &quot;Associate&#39;s degree&quot;,..: 7 6 3 6 1 1 2 1 6 1 ...
+##  $ ethnicity             : Factor w/ 3 levels &quot;Black or African American&quot;,..: 3 3 3 2 3 2 2 3 3 3 ...
+##  $ party                 : Factor w/ 4 levels &quot;Democrat&quot;,&quot;Independent&quot;,..: 1 1 4 2 4 4 4 4 3 1 ...
+##  $ candidate             : Factor w/ 5 levels &quot;Donald Trump&quot;,..: 3 3 1 3 1 4 1 1 NA 3 ...
+##  $ recall_A              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: 2 3 3 NA NA NA 2 3 NA NA ...
+##  $ recall_B              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: 1 NA NA 1 1 2 3 1 1 NA ...
+##  $ recall_C              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: 1 1 1 1 1 NA NA NA NA 1 ...
+##  $ recall_D              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: NA NA NA 1 1 2 NA 1 1 1 ...
+##  $ recall_E              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: NA 3 3 NA NA 2 1 NA 1 1 ...
+##  $ recall_F              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: NA 1 NA 1 1 2 1 1 NA NA ...
+##  $ recall_G              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: 2 3 NA NA NA 2 NA NA 1 NA ...
+##  $ recall_H              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: 2 NA 1 1 2 NA NA 1 2 3 ...
+##  $ recall_I              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: 2 3 3 NA NA 2 3 NA 3 NA ...
+##  $ recall_J              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: NA NA 3 NA 1 NA 1 NA NA 1 ...
+##  $ recall_K              : Factor w/ 3 levels &quot;no&quot;,&quot;unsure&quot;,..: NA NA NA 3 NA NA NA 3 NA 3 ...
+##  $ accuracy_A            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA 1 3 NA NA NA NA 1 NA NA ...
+##  $ accuracy_B            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA NA NA NA NA NA 3 NA NA NA ...
+##  $ accuracy_C            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA NA NA NA NA NA NA NA NA NA ...
+##  $ accuracy_D            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA NA NA NA NA NA NA NA NA NA ...
+##  $ accuracy_E            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA 4 3 NA NA NA NA NA NA NA ...
+##  $ accuracy_F            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA NA NA NA NA NA NA NA NA NA ...
+##  $ accuracy_G            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA 4 NA NA NA NA NA NA NA NA ...
+##  $ accuracy_H            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA NA NA NA NA NA NA NA NA 2 ...
+##  $ accuracy_I            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA 2 3 NA NA NA 3 NA 3 NA ...
+##  $ accuracy_J            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA NA 3 NA NA NA NA NA NA NA ...
+##  $ accuracy_K            : Factor w/ 4 levels &quot;not at all accurate&quot;,..: NA NA NA 2 NA NA NA 4 NA 3 ...
+##  $ score_BuzzFeed        : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 5 4 3 4 5 1 4 5 3 4 ...
+##  $ score_Huffington_Post : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 3 2 3 5 5 1 5 4 3 2 ...
+##  $ score_New_York_Times  : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 2 2 2 5 3 4 4 4 3 2 ...
+##  $ score_Facebook        : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 2 4 2 5 3 5 4 2 2 4 ...
+##  $ score_Twitter         : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 2 4 3 3 4 4 4 3 4 4 ...
+##  $ score_Snapchat        : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 5 4 2 4 1 1 4 4 3 4 ...
+##  $ score_VICE            : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 5 4 5 1 4 1 1 4 5 4 ...
+##  $ score_CNN             : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 2 2 2 4 3 3 3 2 3 4 ...
+##  $ score_Vox             : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 5 5 3 1 1 1 5 4 4 4 ...
+##  $ score_Business_Insider: Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 2 3 5 1 4 1 1 4 4 4 ...
+##  $ score_Washington_Post : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 3 2 3 5 3 4 1 4 3 5 ...
+##  $ score_Google_News     : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 2 3 2 3 3 5 4 5 3 5 ...
+##  $ score_Yahoo_News      : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 2 4 2 3 5 3 4 5 4 4 ...
+##  $ score_Drudge_Report   : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 5 4 2 4 5 1 4 4 4 4 ...
+##  $ score_Fox_News        : Factor w/ 5 levels &quot;I am not familiar with this news source&quot;,..: 3 4 2 4 3 5 3 5 3 4 ...
+</code></pre>
+
+<h1>Breaking Recall, Accuracy &amp; News Sources Scores</h1>
+
+<p>For convinience, I&#39;m going to break the original data into three, for recall, accuracy, and news souce score.</p>
+
+<h2>Recall &amp; Accuracy</h2>
+
+<pre><code class="r">extract_headline &lt;- function(name, headlines) return(str_match_all(name, &quot;(accuracy|recall)_([A-K])&quot;)[[1]][3])
+
+recall_data &lt;- data[, c(&quot;ID&quot;, &quot;Weightvar&quot;, demographic_variables, recall_variables(data))]
+accuracy_data &lt;- data[, c(&quot;ID&quot;, &quot;Weightvar&quot;, demographic_variables, accuracy_variables(data))]
+
+rebuild_column &lt;- function(data, column) {
+  data &lt;- melt(data, id.vars=c(&quot;ID&quot;, &quot;Weightvar&quot;, demographic_variables))
+  data$variable &lt;- sapply(data$variable, extract_headline)
+  data &lt;- rename_columns(data, c(&quot;variable&quot;, &quot;value&quot;), c(&quot;headline_id&quot;, column))
+  return(data)
+}
+
+accuracy_data &lt;- rebuild_column(accuracy_data, &quot;accuracy&quot;)
+recall_data &lt;- rebuild_column(recall_data, &quot;recall&quot;)
+</code></pre>
+
+<p>For simplicity, I&#39;m going to generate a binary variable for the responder guessing the headline veracity correctly or incorrectly:</p>
+
+<pre><code class="r">guessed_correctly &lt;- function(headline_status, accuracy) {
+  if(is.na(headline_status) | is.na(accuracy)) return(NA)
+  else if(headline_status == &quot;Fake&quot; &amp; grepl(&quot;not&quot;, accuracy) | 
+          headline_status == &quot;Real&quot; &amp; ! grepl(&quot;not&quot;, accuracy)) return(&quot;yes&quot;)
+  else return(&quot;no&quot;)
+}
+
+add_correct_answer &lt;- function(data) {
+  data$guessed_correctly &lt;- mapply(guessed_correctly, data$headline_status, data$accuracy)
+  return(data)
+}
+
+accuracy_data &lt;- left_join(accuracy_data, headlines, by = &quot;headline_id&quot;)
+accuracy_data &lt;- add_correct_answer(accuracy_data)
+
+render_table(sample_data_frame(accuracy_data, 6))
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<p><br/>
+The same for the responder having heard the headline:</p>
+
+<pre><code class="r">add_seen_fake_headline &lt;- function(data) {
+  data$seen_fake_headline &lt;- ifelse(data$headline_status == &quot;Fake&quot; &amp; grepl(&quot;yes&quot;, data$recall) ,&quot;yes&quot;, &quot;no&quot;)
+  data[data$headline_status == &quot;Real&quot;, &quot;seen_fake_headline&quot;] &lt;- NA
+  return(data)
+}
+
+recall_data &lt;- left_join(recall_data, headlines, by = &quot;headline_id&quot;)
+recall_data &lt;- add_seen_fake_headline(recall_data)
+render_table(sample_data_frame(recall_data, 6))
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<p><br/></p>
+
+<h2>News source</h2>
+
+<pre><code class="r">news_source_score_variables &lt;- function(data) variable_names(data, &quot;score_.+&quot;)
+
+extract_news_source &lt;- function(name) {
+  name &lt;- str_match_all(name, &quot;score_(.+)&quot;)[[1]][2]
+  name &lt;- str_replace_all(name, &quot;_&quot;, &quot; &quot;)
+  return(name)
+}
+
+rebuild_column &lt;- function(data) {
+  data &lt;- data[, c(&quot;ID&quot;, &quot;Weightvar&quot;, demographic_variables, news_source_score_variables(data))]
+  data &lt;- melt(data, id.vars=c(&quot;ID&quot;, &quot;Weightvar&quot;, demographic_variables))
+  data$variable &lt;- sapply(data$variable, extract_news_source)
+  data &lt;- rename_columns(data, c(&quot;variable&quot;, &quot;value&quot;), c(&quot;news_source&quot;, &quot;news_source_score&quot;))
+  return(data)
+}
+
+news_source_score_data &lt;- rebuild_column(data)
+render_table(sample_data_frame(news_source_score_data, 6))
+</code></pre>
+
+<pre><code>## Error: RStudio not running
+</code></pre>
+
+<p><br/></p>
+
+<h1>Save Data to CSV</h1>
+
+<pre><code class="r">write.csv(recall_data, file = &quot;../output/recall_data.csv&quot;, row.names = FALSE)
+write.csv(accuracy_data, file = &quot;../output/accuracy_data.csv&quot;, row.names = FALSE)
+write.csv(news_source_score_data, file = &quot;../output/news_source_score_data.csv&quot;, row.names = FALSE)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='Overview'>
+         1
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="http://slidifylibraries2.googlecode.com/git/inst/libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>

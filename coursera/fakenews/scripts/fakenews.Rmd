@@ -15,12 +15,11 @@ output:
 
 # Overview
 
-The data used in this notebook has been taken from a survey performed by [BuzzFeed](https://www.buzzfeed.com/), which attempted to measure how effectual is the proliferation of fake news in different states in the United States. The original data can be found [here](https://github.com/BuzzFeedNews/2016-12-fake-news-survey) and the article that makes use of the data [here](https://www.buzzfeed.com/craigsilverman/fake-news-survey). 
+The available data-set made available by [BuzzFeed](https://www.buzzfeed.com/) needed a somewhat extensive cleanup and for this reason I have created this notebook.
 
-After reading the article, I noticed that they could have used some interactivity in the graphs. They needed a somehow large number of static graphs to express their results. They could have been equally expressive with a much smaller number of interactive graphs, thus my choice of using this data-set to showcase my [leaflet](http://leafletjs.com/) skills.
+If you are only interested in the interactive graphs, you may go directly to the [presentation](../presentation/index.html).
 
-This data-set required quite a bit of work, so if you are only interested in  interactive graphs, you can skip to the [Graphical Exploration](#graphicalexploration) section. 
-
+BuzzFeed provided a simplified data-set as well, but they removed a lot of information, including much of the demographic, so I had to use the raw data, which can be found [here](https://github.com/BuzzFeedNews/2016-12-fake-news-survey), in my analysis.
 
 # Installing the Required Packages
 
@@ -31,11 +30,6 @@ install.packages("xtable")
 install.packages("dplyr")
 install.packages("plyr")
 install.packages("stringr")
-install.packages("leaflet")
-install.packages("rgdal")
-install.packages("raster")
-install.packages("RColorBrewer")
-install.packages("shiny")
 install.packages("reshape2")
 ```
 
@@ -44,16 +38,11 @@ install.packages("reshape2")
 Once the libraries are installed, they need to be loaded as follows:
 
 ```{r}
-suppressMessages(library(sp))
+suppressMessages(library(sp, quietly = TRUE))
 suppressMessages(library(xtable))                        # Pretty printing dataframes
 suppressMessages(library(plyr, warn.conflicts = FALSE))  # Manipulating dataframes
 suppressMessages(library(dplyr, warn.conflicts = FALSE))
 suppressMessages(library(stringr))                       # Manipulating strings
-suppressMessages(library(leaflet))                       # Interactive graphs
-suppressMessages(library(rgdal))
-suppressMessages(library(raster))                        # Loading geo-spacial data
-suppressMessages(library(RColorBrewer))                  # Preview palletes
-suppressMessages(library(shiny))
 suppressMessages(library(reshape2))                      # Reshape columns into rows
 ```
 
@@ -72,7 +61,8 @@ headlines <- read.csv("../input/headlines.csv", na.strings=c("NA", "NULL", ""), 
 
 ```{r, results="asis"}
 render_table_in_viewer_pane <- function(data, digits) {
-  html <- print(xtable(data, digits = digits), type = "html", print.results=FALSE)
+  html <- print(xtable(data, digits = digits), type = "html", print.results=FALSE,
+                sanitize.text.function = function(x) x)
   temp <- tempfile(fileext = ".html")
   cat(html, file = temp)
   rstudioapi::viewer(temp)
@@ -80,7 +70,8 @@ render_table_in_viewer_pane <- function(data, digits) {
 
 render_table <- function(data, digits = 2) {
   render_table_in_viewer_pane(data, digits)
-  print(xtable(data, digits = digits), type = "html")
+  print(xtable(data, digits = digits), type = "html",
+        sanitize.text.function = function(x) x)
 }
 
 sample_data_frame <- function(data, size) {
@@ -410,35 +401,54 @@ recall_data <- rebuild_column(recall_data, "recall")
 
 For simplicity, I'm going to generate a binary variable for the responder guessing the headline veracity correctly or incorrectly:
 
-```{r}
+```{r, results="asis"}
+guessed_correctly <- function(headline_status, accuracy) {
+  if(is.na(headline_status) | is.na(accuracy)) return(NA)
+  else if(headline_status == "Fake" & grepl("not", accuracy) | 
+          headline_status == "Real" & ! grepl("not", accuracy)) return("yes")
+  else return("no")
+}
 
-add_correct_answer <- function(data) {
-  data$guessed_correctly <- ifelse(data$headline_status == "Fake" & grepl("not", data$accuracy) | 
-                                   data$headline_status == "Real" & ! grepl("not", data$accuracy),
-                                   "yes", "no")
+add_guessed_correctly <- function(data) {
+  data$guessed_correctly <- mapply(guessed_correctly, data$headline_status, data$accuracy)
+  data <- data[!is.na(data$guessed_correctly), ]
   return(data)
 }
 
 accuracy_data <- left_join(accuracy_data, headlines, by = "headline_id")
-accuracy_data <- add_correct_answer(accuracy_data)
+accuracy_data <- add_guessed_correctly(accuracy_data)
+
+render_table(sample_data_frame(accuracy_data, 6))
 ```
 
+<br/>
 The same for the responder having heard the headline:
 
-```{r}
-add_seen_fake_headline <- function(data) {
-  data$seen_fake_headline <- ifelse(data$headline_status == "Fake" & grepl("yes", data$recall) ,"yes", "no")
-  data[data$headline_status == "Real", "seen_fake_headline"] <- NA
+```{r, results="asis"}
+recall_fake_headline <- function(headline_status, recall) {
+  if(is.na(headline_status) | headline_status == "Real" | is.na(recall)) return(NA)
+  else if(headline_status == "Fake" & grepl("yes", recall)) return("yes")
+  else return("no")  
+}
+
+add_recall_fake_headline <- function(data) {
+  data$recall_fake_headline <- mapply(recall_fake_headline, data$headline_status, data$recall)
+  data <- data[!is.na(data$recall_fake_headline), ]
   return(data)
 }
 
 recall_data <- left_join(recall_data, headlines, by = "headline_id")
-recall_data <- add_seen_fake_headline(recall_data)
+recall_data <- add_recall_fake_headline(recall_data)
+
+recall_data
+render_table(sample_data_frame(recall_data, 6))
 ```
+
+<br/>
 
 ## News source
 
-```{r}
+```{r, results="asis"}
 news_source_score_variables <- function(data) variable_names(data, "score_.+")
 
 extract_news_source <- function(name) {
@@ -456,143 +466,16 @@ rebuild_column <- function(data) {
 }
 
 news_source_score_data <- rebuild_column(data)
-```
-
-# Computing Statistics
-
-## Accuracy
-
-```{r}
-compute_overall_percentages <- function(data) {
-  count_column <- "guessed_correctly"
-  counts <- group_by_(data, .dots = c("state", count_column)) %>% summarise(freq = sum(Weightvar))
-  percentages <- group_by_(counts, .dots = c("state")) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
-  percentages <- percentages[percentages[[count_column]] == "no", ]
-  return(percentages)
-}
-
-compute_percentages <- function(data, column) {
-  count_column <- "guessed_correctly"
-  data <- data[!is.na(data[, column]), ]
-  counts <- plyr::count(data, vars = c("state", column, count_column))
-  percentages <- group_by_(counts, .dots = c("state", column)) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
-  percentages <- percentages[percentages[[count_column]] == "no", ]
-  return(percentages)
-}
-
-overall_percentages <- compute_overall_percentages(accuracy_data)
-education_percentages <- compute_percentages(accuracy_data, "education")
-party_percentages <- compute_percentages(accuracy_data, "party")
-candidate_percentages <- compute_percentages(accuracy_data, "candidate")
-income_percentages <- compute_percentages(accuracy_data, "income")
-ethnicity_percentages <- compute_percentages(accuracy_data, "ethnicity")
-```
-
-## News Source
-
-For simplicity, I'm only going calculate the percentages for major source of news:
-
-```{r}
-counts <- group_by_(news_source_score_data[news_source_score_data$news_source_score == "Is a major source of news for me", ],
-                    .dots = c("state", "news_source")) %>% summarise(freq = sum(Weightvar))
-news_sources_percentages <- group_by_(counts, .dots = c("state")) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
-```
-
-# Adding Geo-coordinates
-
-First of all, we need to add shape coordinates for the states, so we can create polygons for them:
-
-```{r}
-states <- shapefile("../input/cb_2015_us_state_20m/cb_2015_us_state_20m.shp")
-```
-
-Second, I'm going to add an ID for color, so each state polygon is assigned a different color:
-
-```{r}
-states$color <- 1:nrow(states)
-```
-
-Finally, we need to add coordinates for the center of each state for markers:
-
-```{r}
-states_centers <- read.csv("../input/states_centers.csv", na.strings=c("NA", "NULL", ""), stringsAsFactors = FALSE)
-```
-
-# Graphical Exploration <a name="graphicalexploration"></a>
-
-The leaflet plot in this section shows the percentage of people, who asked about the headlines below, could not tell which ones were real or fake:
-
-```{r, results="asis"}
-render_table(headlines)
+render_table(sample_data_frame(news_source_score_data, 6))
 ```
 
 <br/>
-If you click a particular U.S. state, you should see a popup with the percentage of times people answered a fake headline was real or the other way around.
 
-The following code create HTML popups for each state:
-
-```{r}
-build_overall_popup <- function(data, state){
-  state_data <- data[data$state == state, ]
-  content <- paste0("<h3>", state, " (overall)</h3>")
-  content <- paste0(content, "<p>", state_data$percentage, "%</p>")
-  return(content)
-}
-
-build_column_popup <- function(data, column, state){
-  state_data <- data[data$state == state, ]
-  content <- paste0("<h3>", state, "</h3>")
-  column_values <- unique(state_data[[column]])
-  for(column_value in column_values) {
-    content <- paste0(content, "<p>", column_value, ": ", state_data$percentage[state_data[[column]] == column_value], "%")
-  }
-  return(content)
-}
-
-states$overall_popup <-sapply(states$NAME, build_overall_popup, data = overall_percentages)
-states$education_popup <-sapply(states$NAME, build_column_popup, data = education_percentages, column = "education")
-states$party_popup <-sapply(states$NAME, build_column_popup, data = party_percentages, column = "party")
-states$candidate_popup <-sapply(states$NAME, build_column_popup, data = candidate_percentages, column = "candidate")
-states$income_popup <-sapply(states$NAME, build_column_popup, data = income_percentages, column = "income")
-states$ethnicity_popup <-sapply(states$NAME, build_column_popup, data = ethnicity_percentages, column = "ethnicity")
-states$news_sources_popup <-sapply(states$NAME, build_column_popup, data = news_source_percentages, column = "news_source")
-```
-
-Finally, without much ado, here's the interactive plot:
+# Save Data to CSV
 
 ```{r}
-add_polygons <- function (map, states, column, group) {
-  map %>% addPolygons(
-    stroke = TRUE, weight = 2, fillOpacity = 0.3, smoothFactor = 0.1,
-    color = "white",
-    fillColor = ~colorNumeric("Paired", sample(states$color))(color),
-    popup = states[[column]], group = group
-  )
-}
-
-usa_longitude = -95.7129
-usa_latitude = 37.0902
-
-leaflet(states, width = "100%") %>%
-  setView(usa_longitude, usa_latitude, zoom = 4) %>%
-  
-  addTiles() %>%
-  
-  add_polygons(states, "news_sources_popup", "Major News Source") %>%
-  
-  add_polygons(states, "overall_popup", "Tricked Overall") %>%
-  add_polygons(states, "education_popup", "Tricked by Education") %>%
-  add_polygons(states, "party_popup", "Tricked by Party") %>%
-  add_polygons(states, "candidate_popup", "Tricked by Candidate") %>%
-  add_polygons(states, "income_popup", "Tricked by Income") %>%
-  add_polygons(states, "ethnicity_popup", "Tricked by Ethnicity") %>%
-
-  addLayersControl(
-    baseGroups = c("Major News Source", "Tricked Overall", "Tricked by Education", "Tricked by Party", "Tricked by Candidate", "Tricked by Income", "Tricked by Ethnicity"),
-    options = layersControlOptions(collapsed = FALSE)
-  ) %>%
-  showGroup(group = "Tricked Overall")
+write.csv(recall_data, file = "../output/recall_data.csv", row.names = FALSE)
+write.csv(accuracy_data, file = "../output/accuracy_data.csv", row.names = FALSE)
+write.csv(news_source_score_data, file = "../output/news_source_score_data.csv", row.names = FALSE)
 ```
 
-
-Choose the type of statistics you want to see by clicking the correspondent radio box and then click the state on the U.S. map to get the statistic for the state.

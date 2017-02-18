@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fake News Proliferation: An Interactive Graphical Exploration</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Fake News Proliferation: An Interactive Graphical Exploration">
+  <meta name="author" content="Marcio Gualtieri">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+<link rel=stylesheet href="./assets/css/style.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>Fake News Proliferation: An Interactive Graphical Exploration</h1>
+    <h2>February 18, 2017</h2>
+    <p>Marcio Gualtieri<br/></p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h2>Overview</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>The data used in this notebook has been taken from a survey performed by <a href="https://www.buzzfeed.com/">BuzzFeed</a>, which attempted to measure how effectual is the proliferation of fake news in different states in the U.S.. You will find the article that makes use of the data <a href="https://www.buzzfeed.com/craigsilverman/fake-news-survey">here</a>. </p>
+
+<p>After reading the article, I noticed that they could have used some interactivity in the graphs. They needed a somehow large number of static graphs to express their results. They could have been equally expressive with a much smaller number of interactive graphs, thus my choice of using this data-set to showcase my <a href="http://leafletjs.com/">leaflet</a> and <a href="https://plot.ly/">plotly</a> skills.</p>
+
+<p>The raw data-set provided by BuzzFeed required quite a bit of cleanup, so I have created a separated notebook for this purpose, which is available <a href="../scripts/fakenews.nb.html">here</a>.</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Required Packages</h2>
+  </hgroup>
+  <article data-timings="">
+    <h3>Install Packages</h3>
+
+<p>The <code>devtools</code> package is required, given that <code>slidify</code> is only available on GitHub at the moment:</p>
+
+<pre><code class="r">install.packages(&quot;xtable&quot;)
+install.packages(&quot;devtools&quot;)
+install.packages(&quot;xtable&quot;)
+install.packages(&quot;dplyr&quot;)
+install.packages(&quot;plyr&quot;)
+install.packages(&quot;leaflet&quot;)
+install.packages(&quot;rgdal&quot;)
+install.packages(&quot;raster&quot;)
+install.packages(&quot;RColorBrewer&quot;)
+install.packages(&quot;htmlwidgets&quot;)
+</code></pre>
+
+<h3>Install <code>slidify</code>:</h3>
+
+<pre><code class="r">suppressMessages(library(devtools))
+install_github(&quot;ramnathv/slidify&quot;)
+install_github(&quot;ramnathv/slidifyLibraries&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>Load Packages</h3>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">suppressMessages(library(sp, quietly = TRUE))
+suppressMessages(library(xtable))                        # Pretty printing dataframes
+suppressMessages(library(plyr, warn.conflicts = FALSE))  # Manipulating dataframes
+suppressMessages(library(dplyr, warn.conflicts = FALSE))
+suppressMessages(library(leaflet))                       # Interactive graphs
+suppressMessages(library(rgdal))
+suppressMessages(library(raster))                        # Loading geo-spacial data
+suppressMessages(library(RColorBrewer))                  # Preview palletes
+suppressMessages(library(slidify))
+suppressMessages(library(slidifyLibraries))
+suppressMessages(library(htmlwidgets))
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Loading Data</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">headlines &lt;- read.csv(&quot;../input/headlines.csv&quot;,
+                      na.strings=c(&quot;NA&quot;, &quot;NULL&quot;, &quot;&quot;),
+                      stringsAsFactors = FALSE)
+
+recall_data &lt;- read.csv(&quot;../output/recall_data.csv&quot;,
+                        na.strings=c(&quot;NA&quot;, &quot;NULL&quot;, &quot;&quot;),
+                        stringsAsFactors = FALSE)
+
+accuracy_data &lt;- read.csv(&quot;../output/accuracy_data.csv&quot;,
+                          na.strings=c(&quot;NA&quot;, &quot;NULL&quot;, &quot;&quot;),
+                          stringsAsFactors = FALSE)
+
+news_source_score_data &lt;- read.csv(&quot;../output/news_source_score_data.csv&quot;,
+                                   na.strings=c(&quot;NA&quot;, &quot;NULL&quot;, &quot;&quot;),
+                                   stringsAsFactors = FALSE)
+</code></pre>
+
+<p>More details about these data-sets are available in a separated notebook, which you will find <a href="../scripts/fakenews.nb.html">here</a>.</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Computing Statistics</h2>
+  </hgroup>
+  <article data-timings="">
+    <h3>Accuracy</h3>
+
+<pre><code class="r">compute_accuracy_percentages &lt;- function(data, group_columns) {
+  if(length(group_columns) &gt; 0)
+      data &lt;- data[!is.na(data[, group_columns]), ]
+  count_column &lt;- &quot;guessed_correctly&quot;
+  counts &lt;- plyr::count(data, vars = c(&quot;state&quot;, group_columns, count_column))
+  percentages &lt;- group_by_(counts, .dots = c(&quot;state&quot;, group_columns)) %&gt;% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+  percentages &lt;- percentages[percentages[[count_column]] == &quot;no&quot;, ]
+  return(percentages)
+}
+
+overall_accuracy_percentages &lt;- compute_accuracy_percentages(accuracy_data, c())
+education_accuracy_percentages &lt;- compute_accuracy_percentages(accuracy_data, &quot;education&quot;)
+party_accuracy_percentages &lt;- compute_accuracy_percentages(accuracy_data, &quot;party&quot;)
+candidate_accuracy_percentages &lt;- compute_accuracy_percentages(accuracy_data, &quot;candidate&quot;)
+income_accuracy_percentages &lt;- compute_accuracy_percentages(accuracy_data, &quot;income&quot;)
+ethnicity_accuracy_percentages &lt;- compute_accuracy_percentages(accuracy_data, &quot;ethnicity&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <article data-timings="">
+    <p>Here&#39;s how the percentages look like:</p>
+
+<pre><code class="r">render_table &lt;- function(data, digits = 2)
+  print(xtable(data, digits = digits), type = &quot;html&quot;,
+        sanitize.text.function = function(x) x)
+
+sample_data_frame &lt;- function(data, size) {
+  sample_index &lt;- sample(1:nrow(data), size)
+  return(data[sample_index, ])
+}
+
+render_table(sample_data_frame(overall_accuracy_percentages, 6))
+</code></pre>
+
+<!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
+
+<!-- Sat Feb 18 19:36:00 2017 -->
+
+<table border=1>
+<tr> <th>  </th> <th> state </th> <th> guessed_correctly </th> <th> freq </th> <th> percentage </th>  </tr>
+  <tr> <td align="right"> 1 </td> <td> Arkansas </td> <td> no </td> <td align="right">   6 </td> <td align="right"> 37.50 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Arizona </td> <td> no </td> <td align="right">  38 </td> <td align="right"> 38.00 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Wyoming </td> <td> no </td> <td align="right">   1 </td> <td align="right"> 50.00 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> North Carolina </td> <td> no </td> <td align="right">  28 </td> <td align="right"> 35.90 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> South Carolina </td> <td> no </td> <td align="right">  17 </td> <td align="right"> 36.96 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Ohio </td> <td> no </td> <td align="right">  59 </td> <td align="right"> 37.11 </td> </tr>
+   </table>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>Recall</h3>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">compute_overall_recall_percentages &lt;- function(data) {
+  count_column &lt;- &quot;recall_fake_headline&quot;
+  counts &lt;- plyr::count(data, vars = c(&quot;state&quot;, count_column))
+  percentages &lt;- group_by_(counts, .dots = c(&quot;state&quot;)) %&gt;% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+  percentages &lt;- percentages[percentages[[count_column]] == &quot;yes&quot;, ]
+  return(percentages)
+}
+
+overall_recall_percentages &lt;- compute_overall_recall_percentages(recall_data)
+render_table(sample_data_frame(overall_recall_percentages, 6))
+</code></pre>
+
+<!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
+
+<!-- Sat Feb 18 19:36:00 2017 -->
+
+<table border=1>
+<tr> <th>  </th> <th> state </th> <th> recall_fake_headline </th> <th> freq </th> <th> percentage </th>  </tr>
+  <tr> <td align="right"> 1 </td> <td> Connecticut </td> <td> yes </td> <td align="right">  13 </td> <td align="right"> 12.04 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Massachusetts </td> <td> yes </td> <td align="right">  26 </td> <td align="right"> 13.76 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Michigan </td> <td> yes </td> <td align="right">  25 </td> <td align="right"> 9.58 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Colorado </td> <td> yes </td> <td align="right">  29 </td> <td align="right"> 15.85 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> North Dakota </td> <td> yes </td> <td align="right">   3 </td> <td align="right"> 12.50 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Arizona </td> <td> yes </td> <td align="right">  37 </td> <td align="right"> 16.44 </td> </tr>
+   </table>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>News Sources</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>For simplicity, I&#39;m only going calculate the percentages for major source of news:</p>
+
+<pre><code class="r">is_a_major_source &lt;- function(data)
+  data$news_source_score == &quot;Is a major source of news for me&quot;
+
+counts &lt;- group_by_(
+  news_source_score_data[is_a_major_source(news_source_score_data), ],
+  .dots = c(&quot;state&quot;, &quot;news_source&quot;)) %&gt;%
+  summarise(freq = sum(Weightvar))
+
+news_sources_percentages &lt;- group_by_(counts, .dots = c(&quot;state&quot;)) %&gt;%
+  dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <article data-timings="">
+    <p>Here&#39;s how the percentages look like:</p>
+
+<pre><code class="r">render_table(sample_data_frame(news_sources_percentages, 6))
+</code></pre>
+
+<!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
+
+<!-- Sat Feb 18 19:36:00 2017 -->
+
+<table border=1>
+<tr> <th>  </th> <th> state </th> <th> news_source </th> <th> freq </th> <th> percentage </th>  </tr>
+  <tr> <td align="right"> 1 </td> <td> California </td> <td> Facebook </td> <td align="right"> 70.21 </td> <td align="right"> 9.74 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Illinois </td> <td> Google News </td> <td align="right"> 24.84 </td> <td align="right"> 10.43 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> New Mexico </td> <td> Washington Post </td> <td align="right"> 1.18 </td> <td align="right"> 5.36 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Mississippi </td> <td> Fox News </td> <td align="right"> 10.58 </td> <td align="right"> 26.91 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Nevada </td> <td> Google News </td> <td align="right"> 6.64 </td> <td align="right"> 10.94 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> New Jersey </td> <td> Huffington Post </td> <td align="right"> 8.21 </td> <td align="right"> 5.80 </td> </tr>
+   </table>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Adding Geo-coordinates</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>Our leaftlet interactive plot require shape coordinates for the U.S. states:</p>
+
+<pre><code class="r">states &lt;- shapefile(&quot;../input/cb_2015_us_state_20m/cb_2015_us_state_20m.shp&quot;)
+</code></pre>
+
+<p>For centering the map in the U.S., we also need its coordinates:</p>
+
+<pre><code class="r">usa_longitude = -95.7129
+usa_latitude = 37.0902
+</code></pre>
+
+<p>I&#39;m also going to add an ID for color, so each state polygon is assigned a different color at random:</p>
+
+<pre><code class="r">states$color &lt;- sample(1:nrow(states))
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Building the Leaflet Interactive Map</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>The leaflet plot we are going to build shows the percentage of survey responders, who when asked about the headlines below, could not tell which ones were real or fake:</p>
+
+<pre><code class="r">render_table(headlines)
+</code></pre>
+
+<!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
+
+<!-- Sat Feb 18 19:36:01 2017 -->
+
+<table border=1>
+<tr> <th>  </th> <th> headline_id </th> <th> headline_value </th> <th> headline_status </th> <th> fact_check_link </th>  </tr>
+  <tr> <td align="right"> 1 </td> <td> A </td> <td> Pope Francis Shocks World Endorses Donald Trump for President Releases Statement </td> <td> Fake </td> <td> <a href=http://www.snopes.com/pope-francis-donald-trump-endorsement/>Snopes</a> </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> B </td> <td> Donald Trump Sent His Own Plane to Transport 200 Stranded Marines </td> <td> Fake </td> <td> <a href=http://www.snopes.com/trump-tower-air/>Snopes</a> </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> C </td> <td> FBI Agent Suspected in Hillary Email Leaks Found Dead in Apparent Murder - Suicide </td> <td> Fake </td> <td> <a href=http://www.snopes.com/fbi-agent-murder-suicide/>Snopes</a> </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> D </td> <td> Donald Trump Protester Speaks Out ‘I Was Paid $3500 to Protest Trump’s Rally’ </td> <td> Fake </td> <td> <a href=http://www.snopes.com/donald-trump-protester-speaks-out/>Snopes</a> </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> E </td> <td> FBI Director Comey Just Put a Trump Sign On His Front Lawn </td> <td> Fake </td> <td> <a href=http://www.snopes.com/fbi-director-james-comeys-trump-sign/>Snopes</a> </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> F </td> <td> Melania Trump’s Girl-on-Girl Photos From Racy Shoot Revealed </td> <td> Real </td> <td> <a href=http://www.mirror.co.uk/3am/celebrity-news/donald-trumps-wife-melania-naked-8542914>Mirror</a> </td> </tr>
+  <tr> <td align="right"> 7 </td> <td> G </td> <td> Barbara Bush: ‘I don’t know how women can vote for Trump’ </td> <td> Real </td> <td> <a href=http://www.cbsnews.com/videos/barbara-bush-i-dont-know-how-women-can-vote-for-donald-trump/>CSB News</a> </td> </tr>
+  <tr> <td align="right"> 8 </td> <td> H </td> <td> Donald Trump Says He’d ‘Absolutely’ Require Muslims to Register </td> <td> Real </td> <td> <a href=https://www.nytimes.com/politics/first-draft/2015/11/20/donald-trump-says-hed-absolutely-require-muslims-to-register/>New York Times</a> </td> </tr>
+  <tr> <td align="right"> 9 </td> <td> I </td> <td> Trump: ‘I Will Protect Our LGBTQ Citizens’ </td> <td> Real </td> <td> <a href=http://www.nbcnews.com/card/trump-i-will-protect-our-lgbtq-citizens-n614621>NBC News</a> </td> </tr>
+  <tr> <td align="right"> 10 </td> <td> J </td> <td> I Ran the C.I.A Now I’m Endorsing Hillary Clinton </td> <td> Real </td> <td> <a href=https://www.nytimes.com/2016/08/05/opinion/campaign-stops/i-ran-the-cia-now-im-endorsing-hillary-clinton.html>New York Times</a> </td> </tr>
+  <tr> <td align="right"> 11 </td> <td> K </td> <td> Donald Trump on Refusing Presidential Salary ‘I’m not taking it’ </td> <td> Real </td> <td> <a href=http://www.cbsnews.com/news/did-donald-trump-say-hed-refuse-to-take-a-salary-as-president/>CBS News</a> </td> </tr>
+   </table>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <article data-timings="">
+    <p>The following code creates HTML popups for each state:</p>
+
+<pre><code class="r">format_percentage &lt;- function(percentage) {
+  if(length(percentage) == 0) percentage &lt;- &quot;NO DATA&quot;
+  else percentage &lt;- paste0(percentage, &quot;%&quot;)
+  return(percentage)
+}
+
+build_overall_popup &lt;- function(data, state){
+  state_data &lt;- data[data$state == state, ]
+  content &lt;- paste0(&quot;&lt;h3&gt;&quot;, state, &quot;&lt;/h3&gt;&quot;)
+  content &lt;- paste0(content, &quot;&lt;p&gt;&quot;, format_percentage(state_data$percentage))
+  return(content)
+}
+
+build_column_popup &lt;- function(data, column, state){
+  state_data &lt;- data[data$state == state, ]
+  state_data &lt;- state_data[with(state_data, order(-state_data$percentage)), ]
+  content &lt;- paste0(&quot;&lt;h3&gt;&quot;, state, &quot;&lt;/h3&gt;&quot;)
+  column_values &lt;- unique(state_data[[column]])
+  for(column_value in column_values) {
+    percentage &lt;- state_data$percentage[state_data[[column]] == column_value]
+    content &lt;- paste0(content, &quot;&lt;p&gt;&quot;, column_value, &quot;: &quot;, format_percentage(percentage))
+  }
+  return(content)
+}
+
+states$accuracy_popup &lt;-sapply(states$NAME, build_overall_popup, data = overall_accuracy_percentages)
+states$recall_popup &lt;-sapply(states$NAME, build_overall_popup, data = overall_recall_percentages)
+
+states$news_sources_popup &lt;-sapply(states$NAME, build_column_popup, data = news_sources_percentages, column = &quot;news_source&quot;)
+
+states$education_popup &lt;- sapply(states$NAME, build_column_popup, data = education_accuracy_percentages, column = &quot;education&quot;)
+states$party_popup &lt;-sapply(states$NAME, build_column_popup, data = party_accuracy_percentages, column = &quot;party&quot;)
+states$candidate_popup &lt;-sapply(states$NAME, build_column_popup, data = candidate_accuracy_percentages, column = &quot;candidate&quot;)
+states$income_popup &lt;-sapply(states$NAME, build_column_popup, data = income_accuracy_percentages, column = &quot;income&quot;)
+states$ethnicity_popup &lt;-sapply(states$NAME, build_column_popup, data = ethnicity_accuracy_percentages, column = &quot;ethnicity&quot;)
+</code></pre>
+
+<p>The popup shows the correspondent percentages for the state when it&#39;s clicked on the map.</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Fake News Interactive Map</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">add_polygons &lt;- function (map, states, column, group) {
+  map %&gt;% addPolygons(
+    stroke = TRUE, weight = 2, fillOpacity = 0.3, smoothFactor = 0.1,
+    color = &quot;white&quot;, fillColor = ~colorNumeric(&quot;Paired&quot;, states$color)(color),
+    popup = states[[column]], group = group
+  )
+}
+
+fake_news_survey_map &lt;- function() {
+  leaflet(states, width = &quot;100%&quot;) %&gt;%
+    setView(usa_longitude, usa_latitude, zoom = 4) %&gt;% addTiles() %&gt;%
+    add_polygons(states, &quot;news_sources_popup&quot;, &quot;Major News Sources&quot;) %&gt;%
+    add_polygons(states, &quot;recall_popup&quot;, &quot;Overall Fake Headline Recall&quot;) %&gt;%
+    add_polygons(states, &quot;accuracy_popup&quot;, &quot;Overall Fake Headline Tricked&quot;) %&gt;%
+    add_polygons(states, &quot;education_popup&quot;, &quot;By Education Tricked&quot;) %&gt;%
+    add_polygons(states, &quot;party_popup&quot;, &quot;By Party Tricked&quot;) %&gt;%
+    add_polygons(states, &quot;candidate_popup&quot;, &quot;By Candidate Tricked&quot;) %&gt;%
+    add_polygons(states, &quot;income_popup&quot;, &quot;By Income Tricked&quot;) %&gt;%
+    add_polygons(states, &quot;ethnicity_popup&quot;, &quot;By Ethnicity Tricked&quot;) %&gt;%
+    addLayersControl(
+      baseGroups = c(&quot;Major News Sources&quot;,
+                     &quot;Overall Fake Headline Recall&quot;, &quot;Overall Fake Headline Tricked&quot;,
+                     &quot;By Education Tricked&quot;, &quot;By Party Tricked&quot;, &quot;By Candidate Tricked&quot;,
+                     &quot;By Income Tricked&quot;, &quot;By Ethnicity Tricked&quot;),
+      options = layersControlOptions(collapsed = FALSE)
+    ) %&gt;%
+    showGroup(group = &quot;Overall Fake Headline Tricked&quot;)
+}
+
+saveWidget(fake_news_survey_map(), file=&quot;fake_news_survey_map.html&quot;)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <article data-timings="">
+    <p>Choose the type of statistics you want to see by clicking the correspondent radio box and then click the state on the U.S. map to get the statistic for the state:</p>
+
+<iframe src="fake_news_survey_map.html"></iframe>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='Overview'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='Required Packages'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='Load Packages'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='Loading Data'>
+         4
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=5 title='Computing Statistics'>
+         5
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=6 title='NA'>
+         6
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=7 title='Recall'>
+         7
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=8 title='News Sources'>
+         8
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=9 title='NA'>
+         9
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=10 title='Adding Geo-coordinates'>
+         10
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=11 title='Building the Leaflet Interactive Map'>
+         11
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=12 title='NA'>
+         12
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=13 title='Fake News Interactive Map'>
+         13
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=14 title='NA'>
+         14
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
