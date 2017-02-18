@@ -39,6 +39,7 @@ install.packages("rgdal")
 install.packages("raster")
 install.packages("RColorBrewer")
 install.packages("htmlwidgets")
+install.packages("plotly")
 ```
 
 ### Install `slidify`:
@@ -59,6 +60,7 @@ suppressMessages(library(xtable))                        # Pretty printing dataf
 suppressMessages(library(plyr, warn.conflicts = FALSE))  # Manipulating dataframes
 suppressMessages(library(dplyr, warn.conflicts = FALSE))
 suppressMessages(library(leaflet))                       # Interactive graphs
+suppressMessages(library(plotly))
 suppressMessages(library(rgdal))
 suppressMessages(library(raster))                        # Loading geo-spacial data
 suppressMessages(library(RColorBrewer))                  # Preview palletes
@@ -97,6 +99,8 @@ More details about these data-sets are available in a separated notebook, which 
 
 ### Accuracy
 
+We need to calculate the percentage of people that mistaken fake news by real news and vice-versa:
+
 ```{r}
 compute_accuracy_percentages <- function(data, group_columns) {
   if(length(group_columns) > 0)
@@ -118,7 +122,7 @@ ethnicity_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "e
 
 --- .class #id 
 
-Here's how the percentages look like:
+Here's a sample from the percentages for accuracy:
 
 ```{r, results="asis"}
 render_table <- function(data, digits = 2)
@@ -137,7 +141,9 @@ render_table(sample_data_frame(overall_accuracy_percentages, 6))
 
 ### Recall
 
-```{r, results="asis"}
+We need to calculate the percentage of people that could recall the fake news headlines:
+
+```{r}
 compute_overall_recall_percentages <- function(data) {
   count_column <- "recall_fake_headline"
   counts <- plyr::count(data, vars = c("state", count_column))
@@ -147,6 +153,13 @@ compute_overall_recall_percentages <- function(data) {
 }
 
 overall_recall_percentages <- compute_overall_recall_percentages(recall_data)
+```
+
+--- .class #id
+
+Here's a sample from the percentages for recall:
+
+```{r, results="asis"}
 render_table(sample_data_frame(overall_recall_percentages, 6))
 ```
 
@@ -270,8 +283,7 @@ add_polygons <- function (map, states, column, group) {
   )
 }
 
-fake_news_survey_map <- function() {
-  leaflet(states, width = "100%") %>%
+fake_news_survey_leaflet <- leaflet(states, width = "100%") %>%
     setView(usa_longitude, usa_latitude, zoom = 4) %>% addTiles() %>%
     add_polygons(states, "news_sources_popup", "Major News Sources") %>%
     add_polygons(states, "recall_popup", "Overall Fake Headline Recall") %>%
@@ -281,17 +293,15 @@ fake_news_survey_map <- function() {
     add_polygons(states, "candidate_popup", "By Candidate Tricked") %>%
     add_polygons(states, "income_popup", "By Income Tricked") %>%
     add_polygons(states, "ethnicity_popup", "By Ethnicity Tricked") %>%
-    addLayersControl(
-      baseGroups = c("Major News Sources",
-                     "Overall Fake Headline Recall", "Overall Fake Headline Tricked",
-                     "By Education Tricked", "By Party Tricked", "By Candidate Tricked",
-                     "By Income Tricked", "By Ethnicity Tricked"),
-      options = layersControlOptions(collapsed = FALSE)
-    ) %>%
+    addLayersControl(baseGroups = c("Major News Sources",
+                                    "Overall Fake Headline Recall", "Overall Fake Headline Tricked",
+                                     "By Education Tricked", "By Party Tricked", "By Candidate Tricked",
+                                     "By Income Tricked", "By Ethnicity Tricked"),
+                     options = layersControlOptions(collapsed = FALSE)
+                    ) %>%
     showGroup(group = "Overall Fake Headline Tricked")
-}
 
-saveWidget(fake_news_survey_map(), file="fake_news_survey_map.html")
+saveWidget(fake_news_survey_leaflet, file="fake_news_survey_leaflet.html")
 ```
 
 --- .class #id
@@ -299,3 +309,37 @@ saveWidget(fake_news_survey_map(), file="fake_news_survey_map.html")
 Choose the type of statistics you want to see by clicking the correspondent radio box and then click the state on the U.S. map to get the statistic for the state:
 
 <iframe src="fake_news_survey_map.html"></iframe>
+
+--- .class #id
+
+## Building the Plotly Interactive Map
+
+```{r}
+state_code <- function(name) {
+  if(name == "District of Columbia") "DC"
+  else state.abb[grep(name, state.name)][1]
+}
+
+states <- overall_accuracy_percentages
+states$state_code <- sapply(states$state, state_code)
+
+geo_config <- list(scope = 'usa',
+                   projection = list(type = 'albers usa'),
+                   showlakes = TRUE,
+                   lakecolor = toRGB('white'))
+
+fake_news_survey_plotly <- plot_geo(states,
+                                    locationmode = 'USA-states') %>%
+  add_trace(z = ~percentage, text = ~state, locations = ~state_code,
+            color = ~percentage, colors = 'Purples'
+  ) %>%
+  colorbar(title = "Percentage Tricked by Fake Headline", tickprefix = "%") %>%
+  layout(title = "Fake News Proliferation in the U.S.", geo = geo_config)
+
+
+saveWidget(fake_news_survey_plotly, file="fake_news_survey_plotly.html")
+```
+
+--- .class #id
+
+<iframe src="fake_news_survey_plotly.html"></iframe>

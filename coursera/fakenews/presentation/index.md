@@ -40,6 +40,7 @@ install.packages("rgdal")
 install.packages("raster")
 install.packages("RColorBrewer")
 install.packages("htmlwidgets")
+install.packages("plotly")
 ```
 
 ### Install `slidify`:
@@ -62,6 +63,7 @@ suppressMessages(library(xtable))                        # Pretty printing dataf
 suppressMessages(library(plyr, warn.conflicts = FALSE))  # Manipulating dataframes
 suppressMessages(library(dplyr, warn.conflicts = FALSE))
 suppressMessages(library(leaflet))                       # Interactive graphs
+suppressMessages(library(plotly))
 suppressMessages(library(rgdal))
 suppressMessages(library(raster))                        # Loading geo-spacial data
 suppressMessages(library(RColorBrewer))                  # Preview palletes
@@ -101,6 +103,8 @@ More details about these data-sets are available in a separated notebook, which 
 
 ### Accuracy
 
+We need to calculate the percentage of people that mistaken fake news by real news and vice-versa:
+
 
 ```r
 compute_accuracy_percentages <- function(data, group_columns) {
@@ -123,7 +127,7 @@ ethnicity_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "e
 
 --- .class #id 
 
-Here's how the percentages look like:
+Here's a sample from the percentages for accuracy:
 
 
 ```r
@@ -140,20 +144,22 @@ render_table(sample_data_frame(overall_accuracy_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 20:19:39 2017 -->
+<!-- Sat Feb 18 23:28:37 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> guessed_correctly </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Georgia </td> <td> no </td> <td align="right">  43 </td> <td align="right"> 35.83 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Minnesota </td> <td> no </td> <td align="right">  22 </td> <td align="right"> 32.84 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Vermont </td> <td> no </td> <td align="right">   2 </td> <td align="right"> 66.67 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> New Mexico </td> <td> no </td> <td align="right">   3 </td> <td align="right"> 50.00 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> Oregon </td> <td> no </td> <td align="right">  32 </td> <td align="right"> 47.06 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> New York </td> <td> no </td> <td align="right"> 229 </td> <td align="right"> 41.34 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Wisconsin </td> <td> no </td> <td align="right">  18 </td> <td align="right"> 33.33 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Alabama </td> <td> no </td> <td align="right">  27 </td> <td align="right"> 50.00 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Maine </td> <td> no </td> <td align="right">   5 </td> <td align="right"> 33.33 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Vermont </td> <td> no </td> <td align="right">   2 </td> <td align="right"> 66.67 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Delaware </td> <td> no </td> <td align="right">  11 </td> <td align="right"> 47.83 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Utah </td> <td> no </td> <td align="right">   4 </td> <td align="right"> 17.39 </td> </tr>
    </table>
 
 --- .class #id 
 
 ### Recall
+
+We need to calculate the percentage of people that could recall the fake news headlines:
 
 
 ```r
@@ -166,19 +172,27 @@ compute_overall_recall_percentages <- function(data) {
 }
 
 overall_recall_percentages <- compute_overall_recall_percentages(recall_data)
+```
+
+--- .class #id
+
+Here's a sample from the percentages for recall:
+
+
+```r
 render_table(sample_data_frame(overall_recall_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 20:19:39 2017 -->
+<!-- Sat Feb 18 23:28:37 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> recall_fake_headline </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Oregon </td> <td> yes </td> <td align="right">  28 </td> <td align="right"> 17.95 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Utah </td> <td> yes </td> <td align="right">   6 </td> <td align="right"> 7.41 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> South Dakota </td> <td> yes </td> <td align="right">   6 </td> <td align="right"> 28.57 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Missouri </td> <td> yes </td> <td align="right">  30 </td> <td align="right"> 18.18 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> Nevada </td> <td> yes </td> <td align="right">  12 </td> <td align="right"> 14.81 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> New Mexico </td> <td> yes </td> <td align="right">   2 </td> <td align="right"> 6.06 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Illinois </td> <td> yes </td> <td align="right">  46 </td> <td align="right"> 12.17 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Indiana </td> <td> yes </td> <td align="right">  18 </td> <td align="right"> 11.54 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Iowa </td> <td> yes </td> <td align="right">  19 </td> <td align="right"> 27.54 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Kentucky </td> <td> yes </td> <td align="right">  16 </td> <td align="right"> 16.16 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Virginia </td> <td> yes </td> <td align="right">  53 </td> <td align="right"> 19.41 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Washington </td> <td> yes </td> <td align="right">  26 </td> <td align="right"> 12.04 </td> </tr>
    </table>
 
 --- .class #id 
@@ -211,15 +225,15 @@ render_table(sample_data_frame(news_sources_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 20:19:39 2017 -->
+<!-- Sat Feb 18 23:28:37 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> news_source </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Maine </td> <td> Google News </td> <td align="right"> 1.37 </td> <td align="right"> 4.12 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Delaware </td> <td> New York Times </td> <td align="right"> 2.30 </td> <td align="right"> 7.70 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Iowa </td> <td> Google News </td> <td align="right"> 2.11 </td> <td align="right"> 6.77 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Kansas </td> <td> BuzzFeed </td> <td align="right"> 1.15 </td> <td align="right"> 7.91 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> Pennsylvania </td> <td> Fox News </td> <td align="right"> 19.30 </td> <td align="right"> 19.11 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> Idaho </td> <td> Fox News </td> <td align="right"> 2.57 </td> <td align="right"> 13.88 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Tennessee </td> <td> Snapchat </td> <td align="right"> 0.71 </td> <td align="right"> 0.94 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Wyoming </td> <td> Yahoo News </td> <td align="right"> 0.63 </td> <td align="right"> 30.65 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Washington </td> <td> Facebook </td> <td align="right"> 15.52 </td> <td align="right"> 19.85 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> New Mexico </td> <td> Facebook </td> <td align="right"> 1.23 </td> <td align="right"> 5.57 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Georgia </td> <td> New York Times </td> <td align="right"> 14.91 </td> <td align="right"> 7.64 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Indiana </td> <td> CNN </td> <td align="right"> 7.68 </td> <td align="right"> 12.12 </td> </tr>
    </table>
 
 --- .class #id 
@@ -261,7 +275,7 @@ render_table(headlines)
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sat Feb 18 20:19:39 2017 -->
+<!-- Sat Feb 18 23:28:37 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> headline_id </th> <th> headline_value </th> <th> headline_status </th> <th> fact_check_link </th>  </tr>
   <tr> <td align="right"> 1 </td> <td> A </td> <td> Pope Francis Shocks World Endorses Donald Trump for President Releases Statement </td> <td> Fake </td> <td> <a href=http://www.snopes.com/pope-francis-donald-trump-endorsement/>Snopes</a> </td> </tr>
@@ -339,8 +353,7 @@ add_polygons <- function (map, states, column, group) {
   )
 }
 
-fake_news_survey_map <- function() {
-  leaflet(states, width = "100%") %>%
+fake_news_survey_leaflet <- leaflet(states, width = "100%") %>%
     setView(usa_longitude, usa_latitude, zoom = 4) %>% addTiles() %>%
     add_polygons(states, "news_sources_popup", "Major News Sources") %>%
     add_polygons(states, "recall_popup", "Overall Fake Headline Recall") %>%
@@ -350,17 +363,15 @@ fake_news_survey_map <- function() {
     add_polygons(states, "candidate_popup", "By Candidate Tricked") %>%
     add_polygons(states, "income_popup", "By Income Tricked") %>%
     add_polygons(states, "ethnicity_popup", "By Ethnicity Tricked") %>%
-    addLayersControl(
-      baseGroups = c("Major News Sources",
-                     "Overall Fake Headline Recall", "Overall Fake Headline Tricked",
-                     "By Education Tricked", "By Party Tricked", "By Candidate Tricked",
-                     "By Income Tricked", "By Ethnicity Tricked"),
-      options = layersControlOptions(collapsed = FALSE)
-    ) %>%
+    addLayersControl(baseGroups = c("Major News Sources",
+                                    "Overall Fake Headline Recall", "Overall Fake Headline Tricked",
+                                     "By Education Tricked", "By Party Tricked", "By Candidate Tricked",
+                                     "By Income Tricked", "By Ethnicity Tricked"),
+                     options = layersControlOptions(collapsed = FALSE)
+                    ) %>%
     showGroup(group = "Overall Fake Headline Tricked")
-}
 
-saveWidget(fake_news_survey_map(), file="fake_news_survey_map.html")
+saveWidget(fake_news_survey_leaflet, file="fake_news_survey_leaflet.html")
 ```
 
 --- .class #id
@@ -368,3 +379,38 @@ saveWidget(fake_news_survey_map(), file="fake_news_survey_map.html")
 Choose the type of statistics you want to see by clicking the correspondent radio box and then click the state on the U.S. map to get the statistic for the state:
 
 <iframe src="fake_news_survey_map.html"></iframe>
+
+--- .class #id
+
+## Building the Plotly Interactive Map
+
+
+```r
+state_code <- function(name) {
+  if(name == "District of Columbia") "DC"
+  else state.abb[grep(name, state.name)][1]
+}
+
+states <- overall_accuracy_percentages
+states$state_code <- sapply(states$state, state_code)
+
+geo_config <- list(scope = 'usa',
+                   projection = list(type = 'albers usa'),
+                   showlakes = TRUE,
+                   lakecolor = toRGB('white'))
+
+fake_news_survey_plotly <- plot_geo(states,
+                                    locationmode = 'USA-states') %>%
+  add_trace(z = ~percentage, text = ~state, locations = ~state_code,
+            color = ~percentage, colors = 'Purples'
+  ) %>%
+  colorbar(title = "Percentage Tricked by Fake Headline", tickprefix = "%") %>%
+  layout(title = "Fake News Proliferation in the U.S.", geo = geo_config)
+
+
+saveWidget(fake_news_survey_plotly, file="fake_news_survey_plotly.html")
+```
+
+--- .class #id
+
+<iframe src="fake_news_survey_plotly.html"></iframe>
