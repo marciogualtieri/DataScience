@@ -308,7 +308,7 @@ saveWidget(fake_news_survey_leaflet, file="fake_news_survey_leaflet.html")
 
 Choose the type of statistics you want to see by clicking the correspondent radio box and then click the state on the U.S. map to get the statistic for the state:
 
-<iframe src="fake_news_survey_map.html"></iframe>
+<iframe src="fake_news_survey_leaflet.html"></iframe>
 
 --- .class #id
 
