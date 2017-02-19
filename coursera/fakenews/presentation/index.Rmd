@@ -112,18 +112,19 @@ compute_accuracy_percentages <- function(data, group_columns) {
   if(length(group_columns) > 0)
       data <- data[!is.na(data[, group_columns]), ]
   count_column <- "guessed_correctly"
-  counts <- plyr::count(data, vars = c("state", group_columns, count_column))
-  percentages <- group_by_(counts, .dots = c("state", group_columns)) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+  counts <- plyr::count(data, vars = c(group_columns, count_column))
+  percentages <- group_by_(counts, .dots = group_columns) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
   percentages <- percentages[percentages[[count_column]] == "no", ]
+  percentages <- percentages[complete.cases(percentages), ]
   return(percentages)
 }
 
-overall_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c())
-education_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "education")
-party_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "party")
-candidate_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "candidate")
-income_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "income")
-ethnicity_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "ethnicity")
+state_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state"))
+state_education_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "education"))
+state_party_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "party"))
+state_candidate_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "candidate"))
+state_income_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "income"))
+state_ethnicity_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "ethnicity"))
 ```
 
 --- .class #id 
@@ -140,7 +141,7 @@ sample_data_frame <- function(data, size) {
   return(data[sample_index, ])
 }
 
-render_table(sample_data_frame(overall_accuracy_percentages, 6))
+render_table(sample_data_frame(state_accuracy_percentages, 6))
 ```
 
 --- .class #id 
@@ -150,15 +151,15 @@ render_table(sample_data_frame(overall_accuracy_percentages, 6))
 We need to calculate the percentage of people that could recall the fake news headlines:
 
 ```{r}
-compute_overall_recall_percentages <- function(data) {
+compute_overall_recall_percentages <- function(data, column) {
   count_column <- "recall_fake_headline"
-  counts <- plyr::count(data, vars = c("state", count_column))
-  percentages <- group_by_(counts, .dots = c("state")) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+  counts <- plyr::count(data, vars = c(column, count_column))
+  percentages <- group_by_(counts, .dots = c(column)) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
   percentages <- percentages[percentages[[count_column]] == "yes", ]
   return(percentages)
 }
 
-overall_recall_percentages <- compute_overall_recall_percentages(recall_data)
+overall_recall_percentages <- compute_overall_recall_percentages(recall_data, "state")
 ```
 
 --- .class #id
@@ -266,14 +267,14 @@ build_column_popup <- function(data, column, state){
 The popup shows the correspondent percentages for the state when it's clicked on the map:
 
 ```{r}
-states$accuracy_popup <-sapply(states$NAME, build_overall_popup, data = overall_accuracy_percentages)
+states$accuracy_popup <-sapply(states$NAME, build_overall_popup, data = state_accuracy_percentages)
 states$recall_popup <-sapply(states$NAME, build_overall_popup, data = overall_recall_percentages)
 states$news_sources_popup <-sapply(states$NAME, build_column_popup, data = news_sources_percentages, column = "news_source")
-states$education_popup <- sapply(states$NAME, build_column_popup, data = education_accuracy_percentages, column = "education")
-states$party_popup <-sapply(states$NAME, build_column_popup, data = party_accuracy_percentages, column = "party")
-states$candidate_popup <-sapply(states$NAME, build_column_popup, data = candidate_accuracy_percentages, column = "candidate")
-states$income_popup <-sapply(states$NAME, build_column_popup, data = income_accuracy_percentages, column = "income")
-states$ethnicity_popup <-sapply(states$NAME, build_column_popup, data = ethnicity_accuracy_percentages, column = "ethnicity")
+states$education_popup <- sapply(states$NAME, build_column_popup, data = state_education_accuracy_percentages, column = "education")
+states$party_popup <-sapply(states$NAME, build_column_popup, data = state_party_accuracy_percentages, column = "party")
+states$candidate_popup <-sapply(states$NAME, build_column_popup, data = state_candidate_accuracy_percentages, column = "candidate")
+states$income_popup <-sapply(states$NAME, build_column_popup, data = state_income_accuracy_percentages, column = "income")
+states$ethnicity_popup <-sapply(states$NAME, build_column_popup, data = state_ethnicity_accuracy_percentages, column = "ethnicity")
 ```
 
 --- .class #id 
@@ -326,9 +327,9 @@ geo_config <- list(scope = 'usa',
                    showlakes = TRUE,
                    lakecolor = toRGB('white'))
 
-fake_news_survey_plotly <- plot_geo(left_join(overall_accuracy_percentages, states_centers, by = c("state")),
+fake_news_survey_map_plotly <- plot_geo(left_join(state_accuracy_percentages, states_centers, by = c("state")),
                                     locationmode = 'USA-states') %>%
-  add_markers(data = left_join(party_accuracy_percentages, states_centers, by = c("state")),
+  add_markers(data = left_join(state_party_accuracy_percentages, states_centers, by = c("state")),
               sizes = c(1000, 100), colors = "Spectral", opacity = 0.3,
               y = ~latitude, x = ~longitude, locations = ~state_code,
               size = ~percentage, color = ~as.factor(party), text = ~paste(party, ":", percentage, "% tricked.")
@@ -340,9 +341,43 @@ fake_news_survey_plotly <- plot_geo(left_join(overall_accuracy_percentages, stat
   layout(title = "Fake News Proliferation in the U.S.", geo = geo_config)
 
 
-saveWidget(fake_news_survey_plotly, file="fake_news_survey_plotly.html")
+saveWidget(fake_news_survey_map_plotly, file="fake_news_survey_map_plotly.html")
 ```
 
 --- .class #id
 
-<iframe src="fake_news_survey_plotly.html"></iframe>
+<iframe src="fake_news_survey_map_plotly.html"></iframe>
+
+--- .class #id
+
+## Building the Plotly Interactive Pie
+
+```{r}
+party_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("party"))
+
+party_data <- data.frame(label = party_accuracy_percentages$party, value = party_accuracy_percentages$percentage)
+
+fake_news_survey_pie_plotly <- function(data) {
+  plot_ly(data = party_data,
+         labels = ~label, values = ~value, type = 'pie', hole = 0.6,
+         textposition = 'inside',
+         textinfo = 'label+value',
+         insidetextfont = list(color = 'white'),
+         hoverinfo = 'text',
+         text = ~paste(value, '% tricked.'),
+         marker = list(colors = colors,
+         line = list(color = 'white', width = 1)),
+         showlegend = FALSE) %>%
+  layout(title = "Fake News Proliferation in the U.S.",
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+}
+
+saveWidget(fake_news_survey_pie_plotly(party_data), file="fake_news_survey_pie_plotly.html")
+```
+
+--- .class #id
+
+I'm only going to plot the overall percentage per party this time:
+
+<iframe src="fake_news_survey_pie_plotly.html"></iframe>

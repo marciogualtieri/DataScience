@@ -117,18 +117,19 @@ compute_accuracy_percentages <- function(data, group_columns) {
   if(length(group_columns) > 0)
       data <- data[!is.na(data[, group_columns]), ]
   count_column <- "guessed_correctly"
-  counts <- plyr::count(data, vars = c("state", group_columns, count_column))
-  percentages <- group_by_(counts, .dots = c("state", group_columns)) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+  counts <- plyr::count(data, vars = c(group_columns, count_column))
+  percentages <- group_by_(counts, .dots = group_columns) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
   percentages <- percentages[percentages[[count_column]] == "no", ]
+  percentages <- percentages[complete.cases(percentages), ]
   return(percentages)
 }
 
-overall_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c())
-education_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "education")
-party_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "party")
-candidate_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "candidate")
-income_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "income")
-ethnicity_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, "ethnicity")
+state_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state"))
+state_education_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "education"))
+state_party_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "party"))
+state_candidate_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "candidate"))
+state_income_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "income"))
+state_ethnicity_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("state", "ethnicity"))
 ```
 
 --- .class #id 
@@ -146,19 +147,19 @@ sample_data_frame <- function(data, size) {
   return(data[sample_index, ])
 }
 
-render_table(sample_data_frame(overall_accuracy_percentages, 6))
+render_table(sample_data_frame(state_accuracy_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sun Feb 19 14:22:32 2017 -->
+<!-- Sun Feb 19 17:00:34 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> guessed_correctly </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Tennessee </td> <td> no </td> <td align="right">  30 </td> <td align="right"> 37.50 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> New Mexico </td> <td> no </td> <td align="right">   3 </td> <td align="right"> 50.00 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> New Jersey </td> <td> no </td> <td align="right">  33 </td> <td align="right"> 33.33 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Minnesota </td> <td> no </td> <td align="right">  22 </td> <td align="right"> 32.84 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> Michigan </td> <td> no </td> <td align="right">  24 </td> <td align="right"> 26.97 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> Arizona </td> <td> no </td> <td align="right">  38 </td> <td align="right"> 38.00 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> New York </td> <td> no </td> <td align="right"> 229 </td> <td align="right"> 41.34 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Missouri </td> <td> no </td> <td align="right">  31 </td> <td align="right"> 37.80 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Mississippi </td> <td> no </td> <td align="right">  13 </td> <td align="right"> 39.39 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Iowa </td> <td> no </td> <td align="right">  18 </td> <td align="right"> 45.00 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> West Virginia </td> <td> no </td> <td align="right">  18 </td> <td align="right"> 35.29 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Montana </td> <td> no </td> <td align="right">   3 </td> <td align="right"> 21.43 </td> </tr>
    </table>
 
 --- .class #id 
@@ -169,15 +170,15 @@ We need to calculate the percentage of people that could recall the fake news he
 
 
 ```r
-compute_overall_recall_percentages <- function(data) {
+compute_overall_recall_percentages <- function(data, column) {
   count_column <- "recall_fake_headline"
-  counts <- plyr::count(data, vars = c("state", count_column))
-  percentages <- group_by_(counts, .dots = c("state")) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
+  counts <- plyr::count(data, vars = c(column, count_column))
+  percentages <- group_by_(counts, .dots = c(column)) %>% dplyr::mutate(percentage = round(freq * 100 / sum(freq), 2))
   percentages <- percentages[percentages[[count_column]] == "yes", ]
   return(percentages)
 }
 
-overall_recall_percentages <- compute_overall_recall_percentages(recall_data)
+overall_recall_percentages <- compute_overall_recall_percentages(recall_data, "state")
 ```
 
 --- .class #id
@@ -190,15 +191,15 @@ render_table(sample_data_frame(overall_recall_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sun Feb 19 14:22:32 2017 -->
+<!-- Sun Feb 19 17:00:34 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> recall_fake_headline </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> North Carolina </td> <td> yes </td> <td align="right">  27 </td> <td align="right"> 10.47 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Idaho </td> <td> yes </td> <td align="right">  10 </td> <td align="right"> 20.83 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Indiana </td> <td> yes </td> <td align="right">  18 </td> <td align="right"> 11.54 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Maine </td> <td> yes </td> <td align="right">   4 </td> <td align="right"> 13.33 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> California </td> <td> yes </td> <td align="right"> 162 </td> <td align="right"> 16.98 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> West Virginia </td> <td> yes </td> <td align="right">  21 </td> <td align="right"> 29.17 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Nebraska </td> <td> yes </td> <td align="right">   5 </td> <td align="right"> 10.42 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Maryland </td> <td> yes </td> <td align="right">  17 </td> <td align="right"> 10.12 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Illinois </td> <td> yes </td> <td align="right">  46 </td> <td align="right"> 12.17 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> New Mexico </td> <td> yes </td> <td align="right">   2 </td> <td align="right"> 6.06 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> North Dakota </td> <td> yes </td> <td align="right">   3 </td> <td align="right"> 12.50 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Indiana </td> <td> yes </td> <td align="right">  18 </td> <td align="right"> 11.54 </td> </tr>
    </table>
 
 --- .class #id 
@@ -231,15 +232,15 @@ render_table(sample_data_frame(news_sources_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sun Feb 19 14:22:32 2017 -->
+<!-- Sun Feb 19 17:00:34 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> news_source </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> South Carolina </td> <td> BuzzFeed </td> <td align="right"> 0.72 </td> <td align="right"> 1.59 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Iowa </td> <td> Snapchat </td> <td align="right"> 1.97 </td> <td align="right"> 6.31 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Connecticut </td> <td> Vox </td> <td align="right"> 1.76 </td> <td align="right"> 2.90 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> Montana </td> <td> Vox </td> <td align="right"> 0.69 </td> <td align="right"> 4.39 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> Virginia </td> <td> Business Insider </td> <td align="right"> 8.30 </td> <td align="right"> 3.68 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> New Mexico </td> <td> Facebook </td> <td align="right"> 1.23 </td> <td align="right"> 5.57 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Oklahoma </td> <td> Drudge Report </td> <td align="right"> 1.63 </td> <td align="right"> 3.28 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Utah </td> <td> Huffington Post </td> <td align="right"> 2.51 </td> <td align="right"> 5.56 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Maine </td> <td> New York Times </td> <td align="right"> 2.18 </td> <td align="right"> 6.54 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Oregon </td> <td> Huffington Post </td> <td align="right"> 5.26 </td> <td align="right"> 11.78 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Florida </td> <td> Vox </td> <td align="right"> 22.44 </td> <td align="right"> 3.26 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Alabama </td> <td> Washington Post </td> <td align="right"> 4.84 </td> <td align="right"> 5.84 </td> </tr>
    </table>
 
 --- .class #id 
@@ -281,7 +282,7 @@ render_table(headlines)
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sun Feb 19 14:22:32 2017 -->
+<!-- Sun Feb 19 17:00:35 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> headline_id </th> <th> headline_value </th> <th> headline_status </th> <th> fact_check_link </th>  </tr>
   <tr> <td align="right"> 1 </td> <td> A </td> <td> Pope Francis Shocks World Endorses Donald Trump for President Releases Statement </td> <td> Fake </td> <td> <a href=http://www.snopes.com/pope-francis-donald-trump-endorsement/>Snopes</a> </td> </tr>
@@ -335,14 +336,14 @@ The popup shows the correspondent percentages for the state when it's clicked on
 
 
 ```r
-states$accuracy_popup <-sapply(states$NAME, build_overall_popup, data = overall_accuracy_percentages)
+states$accuracy_popup <-sapply(states$NAME, build_overall_popup, data = state_accuracy_percentages)
 states$recall_popup <-sapply(states$NAME, build_overall_popup, data = overall_recall_percentages)
 states$news_sources_popup <-sapply(states$NAME, build_column_popup, data = news_sources_percentages, column = "news_source")
-states$education_popup <- sapply(states$NAME, build_column_popup, data = education_accuracy_percentages, column = "education")
-states$party_popup <-sapply(states$NAME, build_column_popup, data = party_accuracy_percentages, column = "party")
-states$candidate_popup <-sapply(states$NAME, build_column_popup, data = candidate_accuracy_percentages, column = "candidate")
-states$income_popup <-sapply(states$NAME, build_column_popup, data = income_accuracy_percentages, column = "income")
-states$ethnicity_popup <-sapply(states$NAME, build_column_popup, data = ethnicity_accuracy_percentages, column = "ethnicity")
+states$education_popup <- sapply(states$NAME, build_column_popup, data = state_education_accuracy_percentages, column = "education")
+states$party_popup <-sapply(states$NAME, build_column_popup, data = state_party_accuracy_percentages, column = "party")
+states$candidate_popup <-sapply(states$NAME, build_column_popup, data = state_candidate_accuracy_percentages, column = "candidate")
+states$income_popup <-sapply(states$NAME, build_column_popup, data = state_income_accuracy_percentages, column = "income")
+states$ethnicity_popup <-sapply(states$NAME, build_column_popup, data = state_ethnicity_accuracy_percentages, column = "ethnicity")
 ```
 
 --- .class #id 
@@ -397,9 +398,9 @@ geo_config <- list(scope = 'usa',
                    showlakes = TRUE,
                    lakecolor = toRGB('white'))
 
-fake_news_survey_plotly <- plot_geo(left_join(overall_accuracy_percentages, states_centers, by = c("state")),
+fake_news_survey_map_plotly <- plot_geo(left_join(state_accuracy_percentages, states_centers, by = c("state")),
                                     locationmode = 'USA-states') %>%
-  add_markers(data = left_join(party_accuracy_percentages, states_centers, by = c("state")),
+  add_markers(data = left_join(state_party_accuracy_percentages, states_centers, by = c("state")),
               sizes = c(1000, 100), colors = "Spectral", opacity = 0.3,
               y = ~latitude, x = ~longitude, locations = ~state_code,
               size = ~percentage, color = ~as.factor(party), text = ~paste(party, ":", percentage, "% tricked.")
@@ -411,9 +412,44 @@ fake_news_survey_plotly <- plot_geo(left_join(overall_accuracy_percentages, stat
   layout(title = "Fake News Proliferation in the U.S.", geo = geo_config)
 
 
-saveWidget(fake_news_survey_plotly, file="fake_news_survey_plotly.html")
+saveWidget(fake_news_survey_map_plotly, file="fake_news_survey_map_plotly.html")
 ```
 
 --- .class #id
 
-<iframe src="fake_news_survey_plotly.html"></iframe>
+<iframe src="fake_news_survey_map_plotly.html"></iframe>
+
+--- .class #id
+
+## Building the Plotly Interactive Pie
+
+
+```r
+party_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("party"))
+
+party_data <- data.frame(label = party_accuracy_percentages$party, value = party_accuracy_percentages$percentage)
+
+fake_news_survey_pie_plotly <- function(data) {
+  plot_ly(data = party_data,
+         labels = ~label, values = ~value, type = 'pie', hole = 0.6,
+         textposition = 'inside',
+         textinfo = 'label+value',
+         insidetextfont = list(color = 'white'),
+         hoverinfo = 'text',
+         text = ~paste(value, '% tricked.'),
+         marker = list(colors = colors,
+         line = list(color = 'white', width = 1)),
+         showlegend = FALSE) %>%
+  layout(title = "Fake News Proliferation in the U.S.",
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+}
+
+saveWidget(fake_news_survey_pie_plotly(party_data), file="fake_news_survey_pie_plotly.html")
+```
+
+--- .class #id
+
+I'm only going to plot the overall percentage per party this time:
+
+<iframe src="fake_news_survey_pie_plotly.html"></iframe>
