@@ -331,11 +331,11 @@ fake_news_survey_plotly <- plot_geo(left_join(overall_accuracy_percentages, stat
   add_markers(data = left_join(party_accuracy_percentages, states_centers, by = c("state")),
               sizes = c(1000, 100), colors = "Spectral", opacity = 0.3,
               y = ~latitude, x = ~longitude, locations = ~state_code,
-              size = ~percentage, color = ~as.factor(party), text = ~paste(party, ":", percentage, "%")
+              size = ~percentage, color = ~as.factor(party), text = ~paste(party, ":", percentage, "% tricked.")
              ) %>%
   layout(legend = list(x = 100, y = 0.5)) %>%
-  add_trace(z = ~percentage, text = ~state, locations = ~state_code,
-            color = ~percentage, showscale = F
+  add_trace(z = ~percentage, text = ~paste(state, ": ", percentage, "% tricked."), locations = ~state_code,
+            color = ~percentage, showscale = FALSE
            ) %>%
   layout(title = "Fake News Proliferation in the U.S.", geo = geo_config)
 

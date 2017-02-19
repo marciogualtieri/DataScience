@@ -19,3 +19,7 @@ pre {
     overflow-x:auto;
     font-size: 12px;
 }
+
+article .build {
+  font-family: Courier;
+}
