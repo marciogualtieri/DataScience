@@ -1,11 +1,11 @@
 ---
 title: 'Workout: Dumbbell Lift Classification'
 output:
-  html_document:
+  html_notebook:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
-  html_notebook:
+  html_document:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
