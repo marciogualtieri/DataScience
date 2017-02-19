@@ -19,6 +19,8 @@ After reading the article, I noticed that they could have used some interactivit
 
 The raw data-set provided by BuzzFeed required quite a bit of cleanup, so I have created a separated notebook for this purpose, which is available [here](../scripts/fakenews.nb.html).
 
+If you are only interested in the interactive graphs, you may skip to sections [Building the Leaflet Interactive Map](index.html#17) or [Building the Plotly Interactive Map](index.html#19).
+
 --- .class #id
 
 ## Required Packages
@@ -74,6 +76,10 @@ suppressMessages(library(htmlwidgets))
 ## Loading Data
 
 ```{r}
+states_centers <- read.csv("../input/states_centers.csv",
+                      na.strings=c("NA", "NULL", ""),
+                      stringsAsFactors = FALSE)
+
 headlines <- read.csv("../input/headlines.csv",
                       na.strings=c("NA", "NULL", ""),
                       stringsAsFactors = FALSE)
@@ -315,25 +321,22 @@ Choose the type of statistics you want to see by clicking the correspondent radi
 ## Building the Plotly Interactive Map
 
 ```{r}
-state_code <- function(name) {
-  if(name == "District of Columbia") "DC"
-  else state.abb[grep(name, state.name)][1]
-}
-
-states <- overall_accuracy_percentages
-states$state_code <- sapply(states$state, state_code)
-
 geo_config <- list(scope = 'usa',
                    projection = list(type = 'albers usa'),
                    showlakes = TRUE,
                    lakecolor = toRGB('white'))
 
-fake_news_survey_plotly <- plot_geo(states,
+fake_news_survey_plotly <- plot_geo(left_join(overall_accuracy_percentages, states_centers, by = c("state")),
                                     locationmode = 'USA-states') %>%
+  add_markers(data = left_join(party_accuracy_percentages, states_centers, by = c("state")),
+              sizes = c(1000, 100), colors = "Spectral", opacity = 0.3,
+              y = ~latitude, x = ~longitude, locations = ~state_code,
+              size = ~percentage, color = ~as.factor(party), text = ~paste(party, ":", percentage, "%")
+             ) %>%
+  layout(legend = list(x = 100, y = 0.5)) %>%
   add_trace(z = ~percentage, text = ~state, locations = ~state_code,
-            color = ~percentage, colors = 'Purples'
-  ) %>%
-  colorbar(title = "Percentage Tricked by Fake Headline", tickprefix = "%") %>%
+            color = ~percentage, showscale = F
+           ) %>%
   layout(title = "Fake News Proliferation in the U.S.", geo = geo_config)
 
 
