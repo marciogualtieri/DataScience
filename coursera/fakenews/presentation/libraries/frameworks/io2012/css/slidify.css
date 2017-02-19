@@ -34,16 +34,16 @@
 
 /* Styles for Title Slide */
 .title-slide hgroup > h1{
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Arial', 'Oswald', sans-serif;
 }
 
 .title-slide hgroup > h2{
-  font-family: 'Oswald', 'Calibri', sans-serif;
+  font-family: 'Arial', 'Oswald', 'Calibri', sans-serif;
 }
 
 /* Fonts and Spacing */
 article p, article li, article li.build, section p, section li{
-  font-family: 'Open Sans','Helvetica', 'Crimson Text', 'Garamond',  'Palatino', sans-serif;
+  font-family: 'Arial', 'Open Sans','Helvetica', 'Crimson Text', 'Garamond',  'Palatino', sans-serif;
   text-align: justify;
   font-size:22px;
   line-height: 1.5em;
@@ -51,7 +51,7 @@ article p, article li, article li.build, section p, section li{
 }
 
 slide:not(.segue) h2{
-  font-family: 'Calibri', Arial, sans-serif;
+  font-family: 'Arial', 'Calibri', Arial, sans-serif;
   font-size: 52px;
   font-style: normal;
   font-weight: bold;
@@ -88,7 +88,7 @@ iframe {
 
 /* Quotes and Shout (for io2012, custom) */
 article q {
-  font-family: 'Crimson Text', sans-serif;
+  font-family: 'Arial', 'Crimson Text', sans-serif;
 }
 
 q {
@@ -146,7 +146,7 @@ q.shout:after {
 table caption{
   margin-top: 20pt;
   font-weight: normal;
-  font-family: "Trebuchet MS", Garuda, sans-serif;
+  font-family: 'Arial', "Trebuchet MS", Garuda, sans-serif;
 }
 
 table th {
@@ -161,7 +161,7 @@ table {
   border-collapse: collapse;
   font-size: 24px;
   line-height: 32px;
-  font-family: 'Trebuchet MS';
+  font-family: 'Arial', 'Trebuchet MS';
   font-weight: bolder;
   color: rgb(102, 102, 102);
 }
@@ -198,7 +198,7 @@ ol {
 
 ol li {
   margin-bottom: 0.5em;
-  font-family: "Open Sans";
+  font-family: 'Arial', "Open Sans";
 }
 
 ol li ol {
@@ -288,7 +288,7 @@ div.modal-body pre{
 }
 
 body {
-  font-family: "Open Sans";
+  font-family: 'Arial', "Open Sans";
   color: #444;
 }
 
@@ -324,21 +324,21 @@ body {
   font-size: 1em;
 }
 slide.segue h2{
- font-family: "Open Sans Condensed";
+ font-family: 'Arial', "Open Sans Condensed";
  font-weight: 700;
 }
 slide:not(.segue)  h2{
- font-family: "Open Sans Condensed";
+ font-family: 'Arial', "Open Sans Condensed";
  font-weight: 700;
  color: darkslategray;
 }
 article p {
-  font-family: "Open Sans"
+  font-family: 'Arial', "Open Sans"
 }
 
 code {
   font-size: 100%;
-  font-family: "Source Code Pro", monospace;
+  font-family: 'Arial', "Source Code Pro", monospace;
   color: darkred;
 }
 pre code {
@@ -357,7 +357,7 @@ pre code {
 }
 
 .title-slide hgroup > h1{
- font-family: 'Oswald', 'Helvetica', sanserif; 
+ font-family: 'Arial', 'Oswald', 'Helvetica', sanserif; 
 }
 
 .title-slide hgroup > h1, 
