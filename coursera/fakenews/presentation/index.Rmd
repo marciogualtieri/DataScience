@@ -13,13 +13,13 @@ widgets: []
 
 ## Overview
 
-The data used in this notebook has been taken from a survey performed by [BuzzFeed](https://www.buzzfeed.com/), which attempted to measure how effectual is the proliferation of fake news in different states in the U.S.. You will find the article that makes use of the data [here](https://www.buzzfeed.com/craigsilverman/fake-news-survey). 
+The data used in this presentation has been taken from a survey performed by [BuzzFeed](https://www.buzzfeed.com/), which attempted to measure how effectual is the proliferation of fake news in different states in the U.S.. You will find the article that makes use of the data [here](https://www.buzzfeed.com/craigsilverman/fake-news-survey). 
 
 After reading the article, I noticed that they could have used some interactivity in the graphs. They needed a somehow large number of static graphs to express their results. They could have been equally expressive with a much smaller number of interactive graphs, thus my choice of using this data-set to showcase my [leaflet](http://leafletjs.com/) and [plotly](https://plot.ly/) skills.
 
 The raw data-set provided by BuzzFeed required quite a bit of cleanup, so I have created a separated notebook for this purpose, which is available [here](../scripts/fakenews.nb.html).
 
-If you are only interested in the interactive graphs, you may skip to sections [Building the Leaflet Interactive Map](index.html#17) or [Building the Plotly Interactive Map](index.html#19).
+If you are only interested in the interactive graphs, you may skip to sections [Building the Leaflet Interactive Map](index.html#17), [Building the Plotly Interactive Map](index.html#19) or [Building the Plotly Interactive Pie](index.html#21).
 
 --- .class #id
 
@@ -353,18 +353,12 @@ saveWidget(fake_news_survey_map_plotly, file="fake_news_survey_map_plotly.html")
 ## Building the Plotly Interactive Pie
 
 ```{r}
-party_accuracy_percentages <- compute_accuracy_percentages(accuracy_data, c("party"))
-
-party_data <- data.frame(label = party_accuracy_percentages$party, value = party_accuracy_percentages$percentage)
-
 fake_news_survey_pie_plotly <- function(data) {
-  plot_ly(data = party_data,
-         labels = ~label, values = ~value, type = 'pie', hole = 0.6,
-         textposition = 'inside',
-         textinfo = 'label+value',
+  plot_ly(data = data,
+         labels = ~label, values = ~value, type = 'pie', hole = 0.5,
+         textposition = 'inside', textinfo = 'label+value',
          insidetextfont = list(color = 'white'),
-         hoverinfo = 'text',
-         text = ~paste(value, '% tricked.'),
+         hoverinfo = 'text', text = ~paste(value, '% tricked.'),
          marker = list(colors = colors,
          line = list(color = 'white', width = 1)),
          showlegend = FALSE) %>%
@@ -373,11 +367,32 @@ fake_news_survey_pie_plotly <- function(data) {
          yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
 }
 
-saveWidget(fake_news_survey_pie_plotly(party_data), file="fake_news_survey_pie_plotly.html")
+to_pie_data <- function(data, column) {
+  column_data <- compute_accuracy_percentages(data, c(column))
+  data.frame(label = column_data[[column]], value = column_data$percentage)
+}
+
+state_data <- to_pie_data(accuracy_data, "state")
+party_data <- to_pie_data(accuracy_data, "party")
+candidate_data <- to_pie_data(accuracy_data, "candidate")
+income_data <- to_pie_data(accuracy_data, "income")
+ethnicity_data <- to_pie_data(accuracy_data, "ethnicity")
+
+saveWidget(fake_news_survey_pie_plotly(state_data), file="fake_news_survey_state_pie_plotly.html")
+saveWidget(fake_news_survey_pie_plotly(party_data), file="fake_news_survey_party_pie_plotly.html")
+saveWidget(fake_news_survey_pie_plotly(candidate_data), file="fake_news_survey_candidate_pie_plotly.html")
+saveWidget(fake_news_survey_pie_plotly(income_data), file="fake_news_survey_income_pie_plotly.html")
+saveWidget(fake_news_survey_pie_plotly(ethnicity_data), file="fake_news_survey_ethnicity_pie_plotly.html")
 ```
 
 --- .class #id
 
-I'm only going to plot the overall percentage per party this time:
+Click the correspondent button to get the percentages of responders tricked by fake news:
 
-<iframe src="fake_news_survey_pie_plotly.html"></iframe>
+<a href = "fake_news_survey_state_pie_plotly.html" target="pieiframe" class="button">By State</a>
+<a href = "fake_news_survey_party_pie_plotly.html" target="pieiframe" class="button">By Party</a>
+<a href = "fake_news_survey_candidate_pie_plotly.html" target="pieiframe" class="button">By Candidate</a>
+<a href = "fake_news_survey_income_pie_plotly.html" target="pieiframe" class="button">By Income</a>
+<a href = "fake_news_survey_ethnicity_pie_plotly.html" target="pieiframe" class="button">By Ethnicity</a>
+
+<iframe name="pieiframe" src="fake_news_survey_state_pie_plotly.html"></iframe>
