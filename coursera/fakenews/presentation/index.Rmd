@@ -354,13 +354,11 @@ saveWidget(fake_news_survey_map_plotly, file="fake_news_survey_map_plotly.html")
 
 ```{r}
 fake_news_survey_pie_plotly <- function(data) {
-  plot_ly(data = data,
-         labels = ~label, values = ~value, type = 'pie', hole = 0.5,
+  plot_ly(data = data, labels = ~label, values = ~value, type = 'pie', hole = 0.5,
          textposition = 'inside', textinfo = 'label+value',
          insidetextfont = list(color = 'white'),
          hoverinfo = 'text', text = ~paste(value, '% tricked.'),
-         marker = list(colors = colors,
-         line = list(color = 'white', width = 1)),
+         marker = list(colors = colors, line = list(color = 'white', width = 1)),
          showlegend = FALSE) %>%
   layout(title = "Fake News Proliferation in the U.S.",
          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
@@ -375,12 +373,14 @@ to_pie_data <- function(data, column) {
 state_data <- to_pie_data(accuracy_data, "state")
 party_data <- to_pie_data(accuracy_data, "party")
 candidate_data <- to_pie_data(accuracy_data, "candidate")
+education_data <- to_pie_data(accuracy_data, "education")
 income_data <- to_pie_data(accuracy_data, "income")
 ethnicity_data <- to_pie_data(accuracy_data, "ethnicity")
 
 saveWidget(fake_news_survey_pie_plotly(state_data), file="fake_news_survey_state_pie_plotly.html")
 saveWidget(fake_news_survey_pie_plotly(party_data), file="fake_news_survey_party_pie_plotly.html")
 saveWidget(fake_news_survey_pie_plotly(candidate_data), file="fake_news_survey_candidate_pie_plotly.html")
+saveWidget(fake_news_survey_pie_plotly(education_data), file="fake_news_survey_education_pie_plotly.html")
 saveWidget(fake_news_survey_pie_plotly(income_data), file="fake_news_survey_income_pie_plotly.html")
 saveWidget(fake_news_survey_pie_plotly(ethnicity_data), file="fake_news_survey_ethnicity_pie_plotly.html")
 ```
@@ -392,6 +392,7 @@ Click the correspondent button to get the percentages of responders tricked by f
 <a href = "fake_news_survey_state_pie_plotly.html" target="pieiframe" class="button">By State</a>
 <a href = "fake_news_survey_party_pie_plotly.html" target="pieiframe" class="button">By Party</a>
 <a href = "fake_news_survey_candidate_pie_plotly.html" target="pieiframe" class="button">By Candidate</a>
+<a href = "fake_news_survey_education_pie_plotly.html" target="pieiframe" class="button">By Education</a>
 <a href = "fake_news_survey_income_pie_plotly.html" target="pieiframe" class="button">By Income</a>
 <a href = "fake_news_survey_ethnicity_pie_plotly.html" target="pieiframe" class="button">By Ethnicity</a>
 

@@ -151,15 +151,15 @@ render_table(sample_data_frame(state_accuracy_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sun Feb 19 23:44:31 2017 -->
+<!-- Mon Feb 20 10:17:59 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> guessed_correctly </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Nebraska </td> <td> no </td> <td align="right">   4 </td> <td align="right"> 30.77 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Missouri </td> <td> no </td> <td align="right">  31 </td> <td align="right"> 37.80 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> New Jersey </td> <td> no </td> <td align="right">  33 </td> <td align="right"> 33.33 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Idaho </td> <td> no </td> <td align="right">   7 </td> <td align="right"> 29.17 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Kansas </td> <td> no </td> <td align="right">  15 </td> <td align="right"> 62.50 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Nebraska </td> <td> no </td> <td align="right">   4 </td> <td align="right"> 30.77 </td> </tr>
   <tr> <td align="right"> 4 </td> <td> Indiana </td> <td> no </td> <td align="right">  17 </td> <td align="right"> 30.91 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> New Mexico </td> <td> no </td> <td align="right">   3 </td> <td align="right"> 50.00 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> District of Columbia </td> <td> no </td> <td align="right">   8 </td> <td align="right"> 44.44 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Nevada </td> <td> no </td> <td align="right">  14 </td> <td align="right"> 33.33 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> New York </td> <td> no </td> <td align="right"> 229 </td> <td align="right"> 41.34 </td> </tr>
    </table>
 
 --- .class #id 
@@ -191,15 +191,15 @@ render_table(sample_data_frame(overall_recall_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sun Feb 19 23:44:31 2017 -->
+<!-- Mon Feb 20 10:17:59 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> recall_fake_headline </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Indiana </td> <td> yes </td> <td align="right">  18 </td> <td align="right"> 11.54 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> Minnesota </td> <td> yes </td> <td align="right">  25 </td> <td align="right"> 13.44 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Illinois </td> <td> yes </td> <td align="right">  46 </td> <td align="right"> 12.17 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> California </td> <td> yes </td> <td align="right"> 162 </td> <td align="right"> 16.98 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> Virginia </td> <td> yes </td> <td align="right">  53 </td> <td align="right"> 19.41 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> Alabama </td> <td> yes </td> <td align="right">  24 </td> <td align="right"> 20.00 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> Minnesota </td> <td> yes </td> <td align="right">  25 </td> <td align="right"> 13.44 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> District of Columbia </td> <td> yes </td> <td align="right">   5 </td> <td align="right"> 18.52 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Missouri </td> <td> yes </td> <td align="right">  30 </td> <td align="right"> 18.18 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Iowa </td> <td> yes </td> <td align="right">  19 </td> <td align="right"> 27.54 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> California </td> <td> yes </td> <td align="right"> 162 </td> <td align="right"> 16.98 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Indiana </td> <td> yes </td> <td align="right">  18 </td> <td align="right"> 11.54 </td> </tr>
    </table>
 
 --- .class #id 
@@ -232,15 +232,15 @@ render_table(sample_data_frame(news_sources_percentages, 6))
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sun Feb 19 23:44:31 2017 -->
+<!-- Mon Feb 20 10:17:59 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> state </th> <th> news_source </th> <th> freq </th> <th> percentage </th>  </tr>
-  <tr> <td align="right"> 1 </td> <td> Indiana </td> <td> Google News </td> <td align="right"> 6.04 </td> <td align="right"> 9.53 </td> </tr>
-  <tr> <td align="right"> 2 </td> <td> South Carolina </td> <td> Yahoo News </td> <td align="right"> 0.73 </td> <td align="right"> 1.62 </td> </tr>
-  <tr> <td align="right"> 3 </td> <td> Arizona </td> <td> Facebook </td> <td align="right"> 10.69 </td> <td align="right"> 9.07 </td> </tr>
-  <tr> <td align="right"> 4 </td> <td> New Jersey </td> <td> Facebook </td> <td align="right"> 24.28 </td> <td align="right"> 17.14 </td> </tr>
-  <tr> <td align="right"> 5 </td> <td> New York </td> <td> Drudge Report </td> <td align="right"> 28.56 </td> <td align="right"> 3.48 </td> </tr>
-  <tr> <td align="right"> 6 </td> <td> North Carolina </td> <td> Washington Post </td> <td align="right"> 14.57 </td> <td align="right"> 8.27 </td> </tr>
+  <tr> <td align="right"> 1 </td> <td> South Carolina </td> <td> BuzzFeed </td> <td align="right"> 0.72 </td> <td align="right"> 1.59 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td> Oregon </td> <td> Snapchat </td> <td align="right"> 0.59 </td> <td align="right"> 1.31 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td> Indiana </td> <td> Twitter </td> <td align="right"> 1.39 </td> <td align="right"> 2.19 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td> Arkansas </td> <td> Drudge Report </td> <td align="right"> 1.39 </td> <td align="right"> 4.60 </td> </tr>
+  <tr> <td align="right"> 5 </td> <td> Oklahoma </td> <td> CNN </td> <td align="right"> 2.81 </td> <td align="right"> 5.64 </td> </tr>
+  <tr> <td align="right"> 6 </td> <td> Iowa </td> <td> Business Insider </td> <td align="right"> 1.92 </td> <td align="right"> 6.15 </td> </tr>
    </table>
 
 --- .class #id 
@@ -282,7 +282,7 @@ render_table(headlines)
 ```
 
 <!-- html table generated in R 3.3.2 by xtable 1.8-2 package -->
-<!-- Sun Feb 19 23:44:31 2017 -->
+<!-- Mon Feb 20 10:17:59 2017 -->
 <table border=1>
 <tr> <th>  </th> <th> headline_id </th> <th> headline_value </th> <th> headline_status </th> <th> fact_check_link </th>  </tr>
   <tr> <td align="right"> 1 </td> <td> A </td> <td> Pope Francis Shocks World Endorses Donald Trump for President Releases Statement </td> <td> Fake </td> <td> <a href=http://www.snopes.com/pope-francis-donald-trump-endorsement/>Snopes</a> </td> </tr>
@@ -426,13 +426,11 @@ saveWidget(fake_news_survey_map_plotly, file="fake_news_survey_map_plotly.html")
 
 ```r
 fake_news_survey_pie_plotly <- function(data) {
-  plot_ly(data = data,
-         labels = ~label, values = ~value, type = 'pie', hole = 0.5,
+  plot_ly(data = data, labels = ~label, values = ~value, type = 'pie', hole = 0.5,
          textposition = 'inside', textinfo = 'label+value',
          insidetextfont = list(color = 'white'),
          hoverinfo = 'text', text = ~paste(value, '% tricked.'),
-         marker = list(colors = colors,
-         line = list(color = 'white', width = 1)),
+         marker = list(colors = colors, line = list(color = 'white', width = 1)),
          showlegend = FALSE) %>%
   layout(title = "Fake News Proliferation in the U.S.",
          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
@@ -447,12 +445,14 @@ to_pie_data <- function(data, column) {
 state_data <- to_pie_data(accuracy_data, "state")
 party_data <- to_pie_data(accuracy_data, "party")
 candidate_data <- to_pie_data(accuracy_data, "candidate")
+education_data <- to_pie_data(accuracy_data, "education")
 income_data <- to_pie_data(accuracy_data, "income")
 ethnicity_data <- to_pie_data(accuracy_data, "ethnicity")
 
 saveWidget(fake_news_survey_pie_plotly(state_data), file="fake_news_survey_state_pie_plotly.html")
 saveWidget(fake_news_survey_pie_plotly(party_data), file="fake_news_survey_party_pie_plotly.html")
 saveWidget(fake_news_survey_pie_plotly(candidate_data), file="fake_news_survey_candidate_pie_plotly.html")
+saveWidget(fake_news_survey_pie_plotly(education_data), file="fake_news_survey_education_pie_plotly.html")
 saveWidget(fake_news_survey_pie_plotly(income_data), file="fake_news_survey_income_pie_plotly.html")
 saveWidget(fake_news_survey_pie_plotly(ethnicity_data), file="fake_news_survey_ethnicity_pie_plotly.html")
 ```
@@ -464,6 +464,7 @@ Click the correspondent button to get the percentages of responders tricked by f
 <a href = "fake_news_survey_state_pie_plotly.html" target="pieiframe" class="button">By State</a>
 <a href = "fake_news_survey_party_pie_plotly.html" target="pieiframe" class="button">By Party</a>
 <a href = "fake_news_survey_candidate_pie_plotly.html" target="pieiframe" class="button">By Candidate</a>
+<a href = "fake_news_survey_education_pie_plotly.html" target="pieiframe" class="button">By Education</a>
 <a href = "fake_news_survey_income_pie_plotly.html" target="pieiframe" class="button">By Income</a>
 <a href = "fake_news_survey_ethnicity_pie_plotly.html" target="pieiframe" class="button">By Ethnicity</a>
 
