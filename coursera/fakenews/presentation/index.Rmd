@@ -354,7 +354,7 @@ saveWidget(fake_news_survey_map_plotly, file="fake_news_survey_map_plotly.html")
 
 ```{r}
 fake_news_survey_pie_plotly <- function(data) {
-  plot_ly(data = data, labels = ~label, values = ~value, type = 'pie', hole = 0.5,
+  plot_ly(data = data, labels = ~label, values = ~value, type = 'pie',
          textposition = 'inside', textinfo = 'label+value',
          insidetextfont = list(color = 'white'),
          hoverinfo = 'text', text = ~paste(value, '% tricked.'),
