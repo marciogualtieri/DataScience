@@ -15,7 +15,7 @@ widgets: []
 
 The data used in this presentation has been taken from a survey performed by [BuzzFeed](https://www.buzzfeed.com/), which attempted to measure how effectual is the proliferation of fake news in different states in the U.S.. You will find the article that makes use of the data [here](https://www.buzzfeed.com/craigsilverman/fake-news-survey). 
 
-After reading the article, I noticed that they could have used some interactivity in the graphs. They needed a somehow large number of static graphs to express their results. They could have been equally expressive with a much smaller number of interactive graphs, thus my choice of using this data-set to showcase my [leaflet](http://leafletjs.com/) and [plotly](https://plot.ly/) skills.
+After reading the article, I noticed that they could have used some interactivity in the graphs. They needed a somewhat large number of static graphs to express their results. They could have been equally expressive with a much smaller number of interactive graphs, thus my choice of using this data-set to showcase my [leaflet](http://leafletjs.com/) and [plotly](https://plot.ly/) skills.
 
 The raw data-set provided by BuzzFeed required quite a bit of cleanup, so I have created a separated notebook for this purpose, which is available [here](../scripts/fakenews.nb.html).
 
