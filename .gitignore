@@ -2,3 +2,5 @@
 .RData
 .cache
 .nojekyll
+*_cache
+*_files
