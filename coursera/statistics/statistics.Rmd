@@ -1,0 +1,388 @@
+---
+title: "Statistical Inference's Course Project"
+author: "Marcio Gualtieri"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+  html_notebook:
+    css: ./styles/style.css
+    toc: yes
+    toc_depth: 4
+  html_document:
+    css: ./styles/style.css
+    toc: yes
+    toc_depth: 4
+---
+
+# Installing the Required Packages
+
+You might need to install the following packages if you don't already have them:
+
+```{r, eval = FALSE}
+install.packages("xtable")
+install.packages("ggplot2")
+install.packages("gridExtra")
+```
+
+# Importing the Required Packages
+
+Once the libraries are installed, they need to be loaded as follows:
+
+```{r}
+suppressMessages(library(xtable))                            # Pretty printing dataframes
+suppressMessages(library(ggplot2))                           # Plotting
+suppressMessages(library(gridExtra, warn.conflicts = FALSE))
+```
+
+# Simulation
+
+## Overview
+
+The [CLT (Central Limit Theorem)](https://en.wikipedia.org/wiki/Central_limit_theorem) states that if independent random variables are linearly combined (for instance, their sum or mean), the result (which is also a random variable) has a distribution which will resemble more and more closely a normal distribution as the number of variables increases. Note that no assumption is made about the original distribution of the variables combined, which does not matter.
+
+The objective of this experiment is to show that the CTL also applies to random variables that follow an [exponential distribution](https://en.wikipedia.org/wiki/Exponential_distribution).
+
+## Theory
+
+### The Exponential Distribution
+
+Exponential distributions describe [Poison processes](https://en.wikipedia.org/wiki/Poisson_point_process), i.e., processes that consist of counting events that occur continuously and independently at a constant average rate. One of such processes would be the distribution of the number of clicks on a given online ad over the period from 10:00 PM to 11:00 PM for instance.
+
+The function below creates data using the probability exponential distribution's density function for a given range of values of `x` and `lambda`:
+
+```{r}
+create_dexp_data <- function(xs, lambdas) {
+  x_data <- rep(xs, length(lambdas))
+  lambda_data <- rep(lambdas, length(xs))
+  data.frame(x = x_data,
+             lambda = as.factor(lambda_data),
+             density = mapply(dexp, x_data, lambda_data))
+}
+```
+
+<br/>
+
+I'm using `dexp()` to compute the density. You will find a summary of the functions available in R related to the exponential distribution [here](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/Exponential.html).
+
+The following function creates line plots for the data:
+
+```{r}
+categorical_line_plot <- function(data, x_column, y_column, group_column)
+  ggplot(data=data, aes_string(x = x_column, y = y_column, color = group_column)) + 
+    geom_line(size=1)
+```
+
+Here's the plot for different values of lambda:
+
+```{r}
+categorical_line_plot(create_dexp_data(seq(1, 30, 0.01), seq(0.1 ,0.5, 0.1)), "x", "density", "lambda")
+```
+
+Nothing very special here: These are negative exponential functions, whose shape you might already be familiar with (through physics, for instance, the [radiactive decay of unstable atomic nucleous](https://en.wikipedia.org/wiki/Exponential_decay)).
+
+### Distribution's Theoretical Center and Variance
+
+From probability theory we expect this distribution to possess the following properties:
+
+|Property|Value                                          |
+|--------|-----------------------------------------------|
+|Density |$f(x) = \lambda \times e^{- \lambda \times x}$ |
+|$\mu$   |$\frac{1}{lambda}$                             |
+|$\sigma$|$\frac{1}{lambda}$                             |
+
+## Experiment
+
+### Experimental Configuration
+
+We are going to perform one thousand simulations, each one consisting of drawing a sample of size $40$ from the exponential distribution:
+
+```{r}
+number_of_experiments <- 1000
+sample_size <- 40
+```
+
+Each sample consists of values drawn from independent $40$ random variables, each one following an exponential distribution.
+
+Once we drawn each sample (1000 of them), we are going to take the mean over each one of them and analyze the its distribution, which should resemble a normal one, as you might remember from what we have discussed about the CLT in the overview section.
+
+### Distribution's Predicted Center and Variance
+
+We are going to set lambda to 0.2:
+
+```{r}
+lambda = 0.2
+```
+
+Which results in $\mu$ = `r 1 / lambda` and $\sigma$ = `r 1 / lambda`:
+
+```{r}
+mu <- 1 / lambda
+sigma <- 1 / lambda
+```
+
+The code below performs the simulations:
+
+```{r}
+simulations <- matrix(rexp(sample_size * number_of_experiments, lambda), number_of_experiments, sample_size)
+simulations_means <- apply(simulations, 1, mean)
+```
+
+Here's a histogram for the simulations' means:
+
+```{r, fig.width = 12, fig.height = 6}
+histogram <- function(data, column, bins, title) {
+  ggplot(data=data, aes_string(x = column)) +
+  geom_histogram(bins = bins, na.rm = TRUE, fill = "blue", alpha = 0.2) +
+  xlab(paste(column, "\n(", title, ")"))
+}
+
+histogram_exponential_distribution <- histogram(data.frame(x = rexp(number_of_experiments, lambda)), "x", 50, "Exponential Distribution")
+histogram_simulation_N_40 <- histogram(data.frame(mean = simulations_means), "mean", 50, "Simulation N = 40")
+
+grid.arrange(histogram_exponential_distribution, histogram_simulation_N_40, nrow=1)
+```
+
+Note that the exponential distribution histogram's shape doesn't resemble a normal distribution in any way (but a exponential function, as expected).
+
+The simulation's histogram on the other hand shows the familiar "bell shape" from normal distributions. You might have also noticed that the mean seems to be roughly centered on `r mu` on the plot.
+
+### Comparing Predicted and Experimental Results
+
+Let's calculate this data's mean and standard error:
+
+```{r}
+estimate_mean <- mean(simulations_means)
+estimate_sigma <- sd(simulations_means)
+```
+
+|Property           |Value             |Comment                                                                                                  |
+|-------------------|------------------|------------------------------------------------------------------------------------------------------|
+|$\mu_{estimate}$   |`r estimate_mean` |Close to $\mu$ = `r mu`, the prediction for the mean.                                                 |
+|$\sigma_{estimate}$|`r estimate_sigma`|Close to $\frac{\sigma}{sqrt(N)}$ = `r sigma/sqrt(sample_size)`, the prediction for the standard error|
+
+Where: $N$ = `r sample_size` (sample size) and $\sigma$ = `r sigma`. Our experiment's results are consistent with the predictions from the theory.
+
+### Graphically Witnessing the CLT in Action
+
+Here I created a function to perform all steps for the experiment we've just performed for $N = 40$, including plotting its respective histogram:
+
+```{r, cache = TRUE}
+experiment_histogram <- function(sample_size, number_of_experiments, bins) {
+  simulations <- matrix(rexp(sample_size * number_of_experiments, lambda), number_of_experiments, sample_size)
+  simulations_means <- apply(simulations, 1, mean)
+  mu = mean(simulations_means)
+  sigma = sd(simulations_means) * sqrt(sample_size)
+  title <- paste("N =", sample_size, "\nmu = ", round(mu, 3), "\nsigma =", round(sigma, 3), "/ sqrt(N)")
+  histogram(data.frame(mean = simulations_means), "mean", bins, title)
+}
+```
+
+Let's get a few histograms for different sample sizes:
+
+```{r, cache = TRUE, fig.width = 12, fig.height = 6}
+histogram_N_10 <- experiment_histogram(10, 1000, 100)
+histogram_N_50 <- experiment_histogram(50, 5000, 100)
+histogram_N_1000 <- experiment_histogram(1000, 100000, 100)
+
+grid.arrange(histogram_N_10, histogram_N_50, histogram_N_1000, ncol=3, nrow=1)
+```
+
+Note that the histogram's shape resembles more closely the "bell shape" from the normal distribution as the size of the sample increases and that $\mu$ and $\sigma$ also get closer and closer to the values predicted by theory.
+
+# Basic Inferential Analysis
+
+## Data Loading
+
+Our data-set consists of the ToothGrowth data-set, which comes with R. You will find more information about this data-set [here](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/ToothGrowth.html).
+
+```{r}
+data(ToothGrowth)
+```
+
+## Exploratory Data Analysis
+
+### Data Types
+
+From [R's documentation](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/ToothGrowth.html):
+
+|Variable|Type    |Meaning                                                  |
+|--------|--------|---------------------------------------------------------|
+|len	   |numeric	|Tooth growth.                                            |
+|supp	   |factor	|Supplement type: VC (ascorbic acid) or OJ (Orange Juice).|
+|dose	   |numeric	|Dose in milligrams/day: 0.5, 1 or 2                      |
+
+But we also can take a look at the schema by ourselves:
+
+```{r}
+str(ToothGrowth)
+```
+
+Let's also take a sample to see how the data-set looks like:
+
+```{r, results="asis"}
+render_table <- function(data)
+  print(xtable(data), type = "html")
+
+sample_data_frame <- function(data, size) {
+  sample_index <- sample(1:nrow(data), size)
+  return(data[sample_index, ])
+}
+
+render_table(sample_data_frame(ToothGrowth, 6))
+```
+
+### Record Count
+
+Given the different combinations for "supp" and "dose", we have the following sub-sets of data:
+
+```{r}
+VC_data <- ToothGrowth[ToothGrowth$supp == 'VC', ]
+OJ_data <- ToothGrowth[ToothGrowth$supp == 'OJ', ]
+VC_0.5_data <- ToothGrowth[ToothGrowth$supp == 'VC' & ToothGrowth$dose == 0.5, ]
+OJ_0.5_data <- ToothGrowth[ToothGrowth$supp == 'OJ' & ToothGrowth$dose == 0.5, ]
+VC_1_data <- ToothGrowth[ToothGrowth$supp == 'VC' & ToothGrowth$dose == 1, ]
+OJ_1_data <- ToothGrowth[ToothGrowth$supp == 'OJ' & ToothGrowth$dose == 1, ]
+VC_2_data <- ToothGrowth[ToothGrowth$supp == 'VC' & ToothGrowth$dose == 2, ]
+OJ_2_data <- ToothGrowth[ToothGrowth$supp == 'OJ' & ToothGrowth$dose == 2, ]
+```
+
+I'm going to do this now since these will be useful when we do inferential analysis.
+
+The record count summary is therefore:
+
+```{r, results="asis"}
+record_count <- data.frame(record = c("total", "supp VC", "supp OJ", "dose 0.5", "dose 1", "dose 2", "0.5 VC", "0.5 OJ", "1 VC", "1 OJ",
+                                      "2 VC", "2 OJ"),
+                           count =  c(nrow(ToothGrowth), nrow(VC_data), nrow(OJ_data), nrow(ToothGrowth[ToothGrowth$dose == 0.5, ]),
+                                      nrow(ToothGrowth[ToothGrowth$dose == 1, ]),nrow(ToothGrowth[ToothGrowth$dose == 2, ]), nrow(VC_0.5_data),
+                                      nrow(OJ_0.5_data), nrow(VC_1_data), nrow(OJ_1_data), nrow(VC_2_data), nrow(OJ_2_data)))
+
+render_table(record_count)
+```
+
+### Data Visualization
+
+Let's visualize how the data is segmented through box plots. Given that "dose" is actually categorical, we will convert it to factor before producing box plots. Plots will behave differently if they interpret a column to be continuous.
+
+```{r}
+ToothGrowth$dose <- as.factor(ToothGrowth$dose)
+```
+
+Here's the box plot for the data:
+
+```{r}
+box_plot <- function(data, x_column, y_column, color_column) {
+  ggplot(data, aes_string(x = x_column, y = y_column)) + 
+  geom_boxplot(aes_string(fill = color_column)) + 
+  geom_point(position = position_jitter(width = 0.2), color = "blue", alpha = 0.2) +
+  facet_wrap(as.formula(paste("~", x_column)), scales="free")
+}
+
+box_plot(ToothGrowth, "dose", "len", "supp")
+```
+
+Visual inspection seems to suggest that "OJ" does better than "VC" for all doses but 2.0, for which they seem to do only equally well.
+
+## Comparing Tooth Growth by "dose" and "supp"
+
+Given that we don't know the standard deviation for this distribution and that the number of records is rather small, we are going to use a [t-distribution](https://en.wikipedia.org/wiki/Student%27s_t-distribution).
+
+### Hypothesis Test
+
+#### Test's Configuration
+
+Let's first define the hypothesis that the treatment had no effect at all, that is:
+
+$$H_0: len = 0$$
+
+$$H_a: len > 0$$
+
+We also define $\alpha = 0.05$ (a 95% confidence interval).
+
+#### P-Values
+
+```{r}
+t.test(ToothGrowth$len, y = NULL, alternative = c("greater"), mu = 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+```
+
+With such P-Value smaller, much smaller than $\alpha = 0.05$, we thus reject the null hypothesis. We state, with 95% confidence, that there is growth. Let's apply the same hypothesis for each one of sub-sets for each different combination of "supp" and "dose":
+
+```{r}
+t.test(VC_data$len, y = NULL, alternative = c("greater"), mu = 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+```
+
+```{r}
+t.test(OJ_data$len, y = NULL, alternative = c("greater"), mu = 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+```
+
+The same goes for different treatments: They all do seem to have an affect.
+
+```{r}
+p_value <- function(data)
+  t.test(data$len, y = NULL,
+         alternative = c("greater"), mu = 0,
+         paired = FALSE, var.equal = FALSE,
+         conf.level = 0.95)$p.value
+
+p_values <- c(p_value(VC_0.5_data), p_value(OJ_0.5_data),
+              p_value(VC_1_data), p_value(OJ_1_data),
+              p_value(VC_2_data), p_value(OJ_2_data))
+
+mean(p_values > 0.05)
+```
+
+Thus the null hypothesis is rejected for any combination of "supp" and "dose". Let's try to find out if any of the treatments is superior to the other:
+
+```{r}
+t.test(OJ_0.5_data$len, VC_0.5_data$len, alternative = "greater", paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+```
+
+```{r}
+t.test(OJ_1_data$len, VC_1_data$len, alternative = "greater", paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+```
+
+```{r}
+t.test(OJ_2_data$len, VC_2_data$len, alternative = "greater", paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+```
+
+We thus reject the hypothesis that "OJ" is equal to "VC" for doses equal 0.5 and 1, but we can't reject the null hypothesis for a dose equal to 2.
+
+#### Conclusions
+
+Treatments for all possible configurations of "dose" and "supp" seem to show growth. For small doses (0.5 and 1), "OJ" seems superior to "VC", but for a greater dose (2), "OJ" could be as effective as "VC". You might remember that this conclusions are in agreement with the intuition we got from the box plots in a previous section.
+
+### Permutation Test
+
+Just for the sake of fun, let's try to apply permutation test to this data-set.
+
+#### Test's Configuration
+
+Here's our statistic function, the difference between the means:
+
+```{r}
+testStat <- function(y, g) mean(y[g == "OJ"]) - mean(y[g == "VC"])
+```
+
+We are trying to determine if "OJ" and "VC" are interchangeable (and therefore equivalent) regarding tooth growth:
+
+```{r}
+y <- ToothGrowth$len
+group <- ToothGrowth$supp
+```
+
+We are also defining $\alpha = 0.05$ for this test.
+
+#### P-value
+
+Let's compute the P-value for the permutations:
+
+```{r}
+observedStat <- testStat(y, group)
+permutations <- sapply(1 : 10000, function(i) testStat(y, sample(group)))
+mean(permutations > observedStat)
+```
+
+#### Conclusion
+
+We obtained a P-value smaller than $\alpha = 0.05$, thus we reject the hypothesis that "OJ" and "VC" are interchangeable.
