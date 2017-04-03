@@ -2,17 +2,17 @@
 title: 'Statistical Inference: Exponential Distribution CLT Simulation'
 author: "Marcio Gualtieri"
 output:
-  pdf_document:
-    toc: yes
-    toc_depth: '4'
-  html_notebook:
-    css: ./styles/style.css
-    toc: yes
-    toc_depth: 4
   html_document:
     css: ./styles/style.css
     toc: yes
     toc_depth: 4
+  html_notebook:
+    css: ./styles/style.css
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
 ---
   
 # Installing the Required Packages
@@ -29,7 +29,6 @@ install.packages("gridExtra")
 Once the libraries are installed, they need to be loaded as follows:
 
 ```{r}
-suppressMessages(library(xtable))                            # Pretty printing dataframes
 suppressMessages(library(ggplot2))                           # Plotting
 suppressMessages(library(gridExtra, warn.conflicts = FALSE))
 ```
@@ -66,8 +65,8 @@ The following function creates line plots for the data:
 
 ```{r}
 categorical_line_plot <- function(data, x_column, y_column, group_column)
-ggplot(data=data, aes_string(x = x_column, y = y_column, color = group_column)) + 
-geom_line(size=1)
+  ggplot(data=data, aes_string(x = x_column, y = y_column, color = group_column)) +
+  geom_line(size=1)
 ```
 
 Here's the plot for different values of lambda:
@@ -142,7 +141,7 @@ histogram_simulation_N_40 <- histogram(data.frame(mean = simulations_means), "me
 grid.arrange(histogram_exponential_distribution, histogram_simulation_N_40, nrow=1)
 ```
 
-Note that the exponential distribution histogram's shape doesn't resemble a normal distribution in any way (but a exponential function, as expected).
+Note that the exponential distribution's histogram's shape doesn't resemble a normal distribution in any way (but a exponential function, as expected).
 
 The simulation's histogram on the other hand shows the familiar "bell shape" from normal distributions. You might have also noticed that the mean seems to be roughly centered on `r mu` on the plot.
 
@@ -155,10 +154,10 @@ estimate_mean <- mean(simulations_means)
 estimate_sigma <- sd(simulations_means)
 ```
 
-|Property           |Value             |Comment                                                                                               |
-|-------------------|------------------|------------------------------------------------------------------------------------------------------|
-|$\mu_{estimate}$   |`r estimate_mean` |Close to $\mu$ = `r mu`, the prediction for the mean.                                                 |
-|$\sigma_{estimate}$|`r estimate_sigma`|Close to $\frac{\sigma}{sqrt(N)}$ = `r sigma/sqrt(sample_size)`, the prediction for the standard error|
+|Property           |Value             |Comment                                                                                                |
+|-------------------|------------------|-------------------------------------------------------------------------------------------------------|
+|$\mu_{estimate}$   |`r estimate_mean` |Close to $\mu$ = `r mu`, the prediction for the mean.                                                  |
+|$\sigma_{estimate}$|`r estimate_sigma`|Close to $\frac{\sigma}{sqrt(N)}$ = `r sigma/sqrt(sample_size)`, the prediction for the standard error.|
 
 Where: $N$ = `r sample_size` (sample size) and $\sigma$ = `r sigma`. Our experiment's results are consistent with the predictions from the theory.
 

@@ -2,17 +2,17 @@
 title: 'Statistical Inference: ToothGrowth Inferential Analysis'
 author: "Marcio Gualtieri"
 output:
-  pdf_document:
-    toc: yes
-    toc_depth: '4'
-  html_notebook:
-    css: ./styles/style.css
-    toc: yes
-    toc_depth: 4
   html_document:
     css: ./styles/style.css
     toc: yes
     toc_depth: 4
+  html_notebook:
+    css: ./styles/style.css
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
 ---
 
 # Installing the Required Packages
@@ -68,7 +68,7 @@ Let's also take a sample to see how the data-set looks like:
 ```{r, results="asis"}
 render_table <- function(data) {
   options(xtable.comment = FALSE)
-  print(xtable(data))
+  print(xtable(data), type = "html")
 }
 
 sample_data_frame <- function(data, size) {
@@ -119,7 +119,7 @@ render_table(record_count)
 
 ### Data Visualization
 
-Let's visualize how the data is segmented through box plots. Given that "dose" is actually categorical, we will convert it to factor before producing box plots. Plots will behave differently if they interpret a column to be continuous.
+Let's visualize how the data is segmented through box plots. Given that "dose" is actually categorical, we will convert it to factor before producing box plots (they will behave differently if they interpret a column to be continuous):
 
 ```{r}
 ToothGrowth$dose <- as.factor(ToothGrowth$dose)
@@ -142,7 +142,11 @@ Visual inspection seems to suggest that "OJ" does better than "VC" for all doses
 
 ## Comparing Tooth Growth by "dose" and "supp"
 
-Given that we don't know the standard deviation for this distribution and that the number of records is rather small, we are going to use a [t-distribution](https://en.wikipedia.org/wiki/Student%27s_t-distribution).
+### Assumptions
+
+We are assuming that the subjects (Guinea pigs) selected for each treatment (different "supp" and "dose" combinations) were randomly selected.
+
+Given that we don't know the standard deviation for this distribution and that the number of records is rather small, we are also assuming that the data follows a [t-distribution](https://en.wikipedia.org/wiki/Student%27s_t-distribution).
 
 ### Hypothesis Test
 
@@ -163,7 +167,7 @@ t.test(ToothGrowth$len, y = NULL, alternative = c("greater"), mu = 0,
        paired = FALSE, var.equal = FALSE, conf.level = 0.95)$p.value
 ```
 
-With such P-Value smaller, much smaller than $\alpha = 0.05$, we thus reject the null hypothesis. We state, with 95% confidence, that there is growth. Let's apply the same hypothesis for each one of sub-sets for each different combination of "supp" and "dose":
+With such P-Value, much smaller than $\alpha = 0.05$, we thus reject the null hypothesis and state, with 95% confidence, that there is growth. Let's apply the same hypothesis for each one of sub-sets for each different combination of "supp" and "dose":
 
 ```{r}
 t.test(VC_data$len, y = NULL, alternative = c("greater"),
@@ -212,7 +216,7 @@ We thus reject the hypothesis that "OJ" is equal to "VC" for doses equal 0.5 and
 
 #### Conclusions
 
-Treatments for all possible configurations of "dose" and "supp" seem to show growth. For small doses (0.5 and 1), "OJ" seems superior to "VC", but for a greater dose (2), "OJ" could be as effective as "VC". You might remember that this conclusions are in agreement with the intuition we got from the box plots in a previous section.
+Treatments for all possible configurations of "dose" and "supp" seem to show growth. For small doses (0.5 and 1) "OJ" seems superior to "VC", but for a greater dose (2), "OJ" seems to be only as effective as "VC". You might remember that this conclusions are in agreement with the intuition we got from the box plots in a previous section.
 
 ### Permutation Test
 
