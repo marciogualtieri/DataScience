@@ -11,10 +11,6 @@ output:
     css: ./styles/style.css
     toc: yes
     toc_depth: 4
-  pdf_document:
-    toc: yes
-    toc_depth: '4'
-classoption: a3paper
 ---
 
 # Required Packages
