@@ -48,20 +48,20 @@ I believe this summarizes everything we need to know about the nature of the inf
 
 You might need to install the following packages if you don't already have them:
 
-```{r}
-# install.packages("plyr")
-# install.packages("dplyr")
-# install.packages("stringr")
-# install.packages("Amelia")
-# install.packages("xtable")
-# install.packages("ggplot2")
-# install.packages("gridExtra")
-# install.packages("caret")
-# install.packages("randomForest")
-# install.packages("e1071")
-# install.packages("rpart")
-# install.packages("tictoc")
-# install.packages("reshape2")
+```{r, eval = FALSE}
+install.packages("plyr")
+install.packages("dplyr")
+install.packages("stringr")
+install.packages("Amelia")
+install.packages("xtable")
+install.packages("ggplot2")
+install.packages("gridExtra")
+install.packages("caret")
+install.packages("randomForest")
+install.packages("e1071")
+install.packages("rpart")
+install.packages("tictoc")
+install.packages("reshape2")
 ```
 
 Just uncomment the packages you need and run this chunk before you run the remaining ones in this notebook.

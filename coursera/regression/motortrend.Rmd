@@ -1,0 +1,272 @@
+---
+title: 'Regression Analysis: Motor Trend'
+author: "Marcio Gualtieri"
+documentclass: article
+output:
+  html_document:
+    css: ./styles/style.css
+    toc: yes
+    toc_depth: 4
+  html_notebook:
+    css: ./styles/style.css
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+classoption: a3paper
+---
+
+# Required Packages
+
+You might need to install and load the following packages if you don't already have them:
+
+```{r}
+suppressMessages(library(xtable))                            # Pretty printing dataframes
+suppressMessages(library(ggplot2))                           # Plotting
+suppressMessages(library(gridExtra, warn.conflicts = FALSE))
+suppressMessages(library(reshape2))                          # Transforming Data Frames
+```
+
+# Overview
+
+You work for Motor Trend, a magazine about the automobile industry. Looking at a data set of a collection of cars, they are interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome). They are particularly interested in the following two questions:
+
+* Is an automatic or manual transmission better for MPG?
+* Quantify the MPG difference between automatic and manual transmissions.
+
+# Data Loading
+
+Our data-set consists of `mtcars`, which comes with R. You will find more information about it [here](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html).
+
+```{r}
+data(mtcars)
+```
+
+# Exploratory Data Analysis
+
+## Variables
+
+R's [documentation for this data-set](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.htm) provides some of the following information:
+
+|Variable|Description                             |Comment                                                                                            |
+|--------|----------------------------------------|---------------------------------------------------------------------------------------------------|
+|mpg     |Miles per (US) gallon                   |                                                                                                   |
+|cyl     |Number of cylinders                     |                                                                                                   |
+|disp    |Displacement (cu.in.)                   |Volume displaced when all engine's pistons perform a single move. Greater volume, greater engine.  |
+|hp      |Gross horsepower                        |                                                                                                   |
+|drat    |Rear axle ratio                         |Greater ratio, greater engine's RPM required to keep the same speed.                               |
+|wt      |Weight (1000 lbs)                       |                                                                                                   |
+|qsec    |1/4 mile time                           |Least amount of time in seconds required to cover 1/4 of a mile. More powerful engine, least qsec. |
+|vs      |V/S (0 = V engine, 1 = Straight engine) |Pistons configuration in the engine, i.e., mounted in a "V" shape or straight.                     |
+|am      |Transmission (0 = automatic, 1 = manual)|                                                                                                   |
+|gear    |Number of forward gears                 |In general manual transmission have more gears, but automatic has been catching up in recent years.|
+|carb    |Number of carburetors                   |Cars these days use fuel injection, thus this makes me think this data-set is a bit old.           |
+
+## Data Types
+
+You may inspect the schema by executiong the following command:
+
+```{r, eval = FALSE}
+str(mtcars)
+```
+
+They are all numbers, but some should be categories. I will map them (`am` and `vs`,both categorical) to factors for easier reading:
+
+```{r}
+mtcars$am <- ifelse(mtcars$am == 0, "Automatic", "Manual")
+mtcars$am <- as.factor(mtcars$am)
+mtcars$vs <- ifelse(mtcars$vs == 0, "V-Engine", "Straight Engine")
+mtcars$vs <- as.factor(mtcars$vs)
+```
+
+## Sampling Data
+
+```{r, results="asis"}
+render_table <- function(data) {
+  options(xtable.comment = FALSE)
+  print(xtable(data), type = "html")
+}
+
+sample_data_frame <- function(data, size) {
+  sample_index <- sample(1:nrow(data), size)
+  return(data[sample_index, ])
+}
+
+render_table(sample_data_frame(mtcars, 6))
+```
+
+## Data Visualization
+
+### Scatter Plot Matrix
+
+You may plot it by executing the following command:
+
+```{r, fig.width = 5, fig.height = 5, eval = FALSE}
+pairs(mtcars, panel = panel.smooth, main = "Motor Trend", col = "light blue") 
+```
+
+But I find correlation heat maps more compact and easier to read.
+
+### Correlation Heat Map
+
+```{r, fig.width = 5, fig.height = 5}
+correlation_matrix <- function(data) {
+  numeric_data <- data[, sapply(data,is.numeric)]
+  matrix <- round(cor(numeric_data), 2)
+  matrix[upper.tri(matrix)] <- NA
+  matrix <- melt(matrix, na.rm = TRUE)
+  return(matrix)
+}
+
+correlation_heat_map <- function(data) {
+  matrix <- correlation_matrix(data)
+  ggplot(data = matrix, aes(x = Var1, y = Var2, fill = value)) + 
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0, limit = c(-1, 1), name="Pearson Correlation") +
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_fixed()
+}
+
+correlation_heat_map(mtcars)
+```
+
+The potential predictors for MPG seem correlated among themselves to some degree, with a few exceptions:
+
+* `gear` seems weakly correlated to `hp`.
+* `drat` seems weakly correlated to `qsec` or `carb`.
+* `wt` seems weakly correlated to `qsec`.
+
+We can easily explain the pairs that correlate:
+
+* Greater `wt` (weight), obviously implies more fuel consumption.
+* Greater `cyl` (number of cylinders) `disp` (displacement volume) or `carb` (number of carburetors), implies more powerful engines and therefore more `hp` (horsepower). Greater `hp` (horsepower) generally implies less fuel efficiency (you need to go one way, efficiency, the other, power, or for a compromise between the two).
+* Greater `gear` (number of gears) implies a greater number of degrees of freedom to choose the appropriate gear for a given speed, thus resulting in better fuel efficiency.
+* `drat` (rear axle ratio) is a little trickier: greater the ratio, greater the engine's RPM (rotations per minute) required to keep the same speed, thus more fuel consumption.
+
+### Box Plots
+
+Here are some box plots for the data:
+
+```{r, fig.width = 10}
+box_plot <- function(data, y_column, x_column, x_title, y_title) {
+  ggplot(data, aes_string(y = y_column, x = x_column)) + 
+  geom_boxplot(aes_string(fill = x_column)) + 
+  geom_point(position = position_jitter(width = 0.2), color = "blue", alpha = 0.2) +
+  xlab(x_title) +
+  ylab(y_title)
+}
+
+mpg_box <- box_plot(mtcars, "mpg", "am", "Transmission", "Miles per U.S. Galon")
+hp_box <- box_plot(mtcars, "hp", "am", "Transmission", "Horse Power")
+gear_box <- box_plot(mtcars, "gear", "am", "Transmission", "Number of Gears")
+grid.arrange(mpg_box, hp_box, gear_box, ncol = 3)
+```
+
+From the box plots, we seem to have indeed better fuel efficiency for vehicles with automatic transmission for the following reasons:
+
+* The vehicles with automatic transmission in the data-set seem to have greater horsepower, which correlates to less fuel efficiency.
+* The vehicles with manual transmission have a greater number of gears.
+
+# Predictors Analysis
+
+## Linear Models
+
+Let's try different models and look at their p-values to check their effect in the response (`mpg`):
+
+```{r}
+summary(lm(mpg ~ . - 1, data = mtcars))$coef
+```
+
+If you look at the P-values, all variables (but `qsec`) accept the null hypothesis $variable = 0$. The reason for that is that many of these variables correlate among themselves. For instance, the following predictors are obviously correlated:
+
+```{r}
+summary(lm(mpg ~ cyl + carb + disp + hp - 1, data = mtcars))$coef
+```
+
+The null hypothesis that $hp = 0$ is accepted due to its p-value. Using common sense and domain knowledge (refer to the `Correlation Heat Map` section), we may come up with the following model:
+
+```{r, echo = FALSE}
+fit_common_sense_with_gear <-lm(mpg ~ hp + wt + gear + drat, data = mtcars)
+summary(fit_common_sense_with_gear)
+```
+
+But given that the questions wee need to answer are related to transmission, let's replace `gear` with `am`, even though we know that `gear` is actually directly correlated to `mpg` and `am` is directly correlated to `gear`:
+
+```{r}
+fit_common_sense_with_am <- lm(mpg ~ hp + wt + am + drat, data = mtcars)
+summary(fit_common_sense_with_am)
+```
+
+We may automate this process using [step](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/step.html) as follows:
+
+```{r}
+fit_all <- lm(mpg ~ ., data = mtcars)
+fit_best <- step(fit_all, direction = "both", trace = FALSE)
+summary(fit_best)
+```
+
+The "common sense" models did slightly worst in the residuals squared, but they are easier to understand.
+
+## Residuals
+
+```{r, fig.width = 12, fig.height = 3}
+residual_plot <- function(fit, title) plot(predict(fit), resid(fit), main = title)
+
+par(mfrow = c(1, 3))
+residual_plot(fit_common_sense_with_gear, "Common Sense Model w/ gear")
+residual_plot(fit_common_sense_with_am, "Common Sense Model w/ am")
+residual_plot(fit_best, "Best Model")
+```
+
+The residuals seem more or less randomly spread, thus uncorrelated to the response. This means our model is able to explain most of the behavior of the response.
+
+# Is an Automatic or Manual Transmission Better for MPG?
+
+## Statistical Inference
+
+To answer this question, we only need a simple statistical inference using hypothesis test:
+
+```{r}
+automatic <- mtcars[mtcars$am == "Automatic", ]
+manual <- mtcars[mtcars$am == "Manual", ]
+t.test(manual$mpg, automatic$mpg, alternative = "greater",
+       paired = FALSE, var.equal = FALSE, conf.level = 0.95)$p.value
+```
+
+## Conclusion
+
+Given this p-value, which is less than $\alpha = 0.05$, we reject the null hypothesis. We know with 95% confidence that MPG for the manual transmission has greater MPG than the automatic transmission.
+
+# Quantify the MPG Difference Between Automatic and Manual Transmissions
+
+## Statistical Regression
+
+We will use statistical regression to quantify this difference:
+
+```{r}
+fit_am <- lm(mpg ~ am, data = mtcars)
+summary(fit_am)$coef
+```
+
+## Conclusion
+
+Let's take the intercept and the slope:
+
+```{r}
+intercept <- coefficients(fit_am)[1]
+slope <- coefficients(fit_am)[2]
+```
+
+The intercept (`r intercept`) represents the mean `MPG` when `am` is zero (automatic). The slope (`r slope`) represents the increase in the mean MPG when `am` is one (manual), thus the mean MPG when `am` is one is $slope + intercept \times 1$, which is `r intercept + slope`.
+
+Therefore, the slope itself, `r slope`, quantifies the difference between the `MPG` for automatic and manual transmissions.
+
+# Executive Summary
+
+* Counter-intuitively, manual transmissions are more fuel efficient. One would think that automatic transmissions would change gears more efficiently, resulting in fuel savings, but that's not the case. The transmission type is indirectly correlated to MPG through the number of gears. In general, automatic transmissions have less gears than their manual counterparts. Greater number of gears means greater number of degrees of freedom when choosing the proper gear for each speed, thus resulting in fuel savings. Of course, we are assuming that the drivers used in the experiment that collected the data were experienced professionals, which can change gears very efficiently. Switching to manual transmission increases `mpg` (miles per U.S. galon) from `r intercept` to `r intercept + slope` in average.
+
+* Horsepower and vehicle's weight affect fuel efficiency much more heavily than transmission type.
+
+* Another variable correlated to fuel efficiency is the rear axle ratio, which determines the engine's RPM's (revolutions per minute) required to keep the same speed. Greater rear axle ratio results in greater engine's RPM's for the same speed, thus greater fuel consumption. 
+
