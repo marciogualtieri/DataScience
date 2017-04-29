@@ -11,6 +11,10 @@ output:
     css: ./styles/style.css
     toc: yes
     toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+classoption: a3paper
 ---
 
 # Required Packages
@@ -81,7 +85,7 @@ mtcars$vs <- as.factor(mtcars$vs)
 ```{r, results="asis"}
 render_table <- function(data) {
   options(xtable.comment = FALSE)
-  print(xtable(data), type = "html")
+  print(xtable(data), , type = "html")
 }
 
 sample_data_frame <- function(data, size) {
@@ -106,7 +110,7 @@ But I find correlation heat maps more compact and easier to read.
 
 ### Correlation Heat Map
 
-```{r, fig.width = 5, fig.height = 5}
+```{r, fig.width = 4, fig.height = 4}
 correlation_matrix <- function(data) {
   numeric_data <- data[, sapply(data,is.numeric)]
   matrix <- round(cor(numeric_data), 2)
@@ -182,15 +186,14 @@ summary(lm(mpg ~ cyl + carb + disp + hp - 1, data = mtcars))$coef
 
 The null hypothesis that $hp = 0$ is accepted due to its p-value. Using common sense and domain knowledge (refer to the `Correlation Heat Map` section), we may come up with the following model:
 
-```{r, echo = FALSE}
-fit_common_sense_with_gear <-lm(mpg ~ hp + wt + gear + drat, data = mtcars)
-summary(fit_common_sense_with_gear)
+```{r}
+fit_common_sense_with_gear <- lm(mpg ~ gear + hp + wt + drat, data = mtcars)
 ```
 
 But given that the questions wee need to answer are related to transmission, let's replace `gear` with `am`, even though we know that `gear` is actually directly correlated to `mpg` and `am` is directly correlated to `gear`:
 
 ```{r}
-fit_common_sense_with_am <- lm(mpg ~ hp + wt + am + drat, data = mtcars)
+fit_common_sense_with_am <- lm(mpg ~ am + hp + wt + drat, data = mtcars)
 summary(fit_common_sense_with_am)
 ```
 
@@ -247,22 +250,34 @@ summary(fit_am)$coef
 
 ## Conclusion
 
-Let's take the intercept and the slope:
+Let's take the intercept and the slope for the unadjusted estimate:
 
 ```{r}
-intercept <- coefficients(fit_am)[1]
-slope <- coefficients(fit_am)[2]
+intercept_am <- coefficients(fit_am)[1]
+slope_am <- coefficients(fit_am)[2]
+r_squared_am <- summary(fit_am)$r.squared
 ```
 
-The intercept (`r intercept`) represents the mean `MPG` when `am` is zero (automatic). The slope (`r slope`) represents the increase in the mean MPG when `am` is one (manual), thus the mean MPG when `am` is one is $slope + intercept \times 1$, which is `r intercept + slope`.
+The intercept (`r intercept_am`) represents the mean `MPG` when `am` is zero (automatic). The slope (`r slope_am`) represents the increase in the mean MPG when `am` is one (manual), thus the mean MPG when `am` is one is $slope + intercept \times 1$, which is `r intercept_am + slope_am`.
 
-Therefore, the slope itself, `r slope`, quantifies the difference between the `MPG` for automatic and manual transmissions.
+The above model only accounts for `am` and doesn't adjust for the effect of the other predictors. Therefore the slope itself, `r slope_am`, doesn't quantify the difference between the `MPG` for automatic and manual transmissions (just look at $R^2$ of `r r_squared_am`, which menas the model doesn't explain a lot of the data).
+
+The following "common sense" model uses `am`, `hp`, `wt` and `drat`, therefore adjusting `am` for the effect of `hp`, `wt` and `drat`:
+
+```{r}
+intercept_common_sense_with_am <- coefficients(fit_common_sense_with_am)[1]
+slope_common_sense_with_am <- coefficients(fit_common_sense_with_am)[2]
+r_squared_common_sense_with_am <- summary(fit_common_sense_with_am)$r.squared
+```
+
+The $R^2$ of `r r_squared_common_sense_with_am` shows that this model explains the data much better.
+
+The intercept doesn't have a physical interpretation here, since it would be the MPG for `amAutomatic` when the remaining predictors are zero (zero horsepower, weight and drat don't make much sense in an experimental setup). But the slope `r slope_common_sense_with_am` represents the increase in MPG when switching from `amAutomatic` to `amManual` while keeping the remaining predictors constant.
 
 # Executive Summary
 
-* Counter-intuitively, manual transmissions are more fuel efficient. One would think that automatic transmissions would change gears more efficiently, resulting in fuel savings, but that's not the case. The transmission type is indirectly correlated to MPG through the number of gears. In general, automatic transmissions have less gears than their manual counterparts. Greater number of gears means greater number of degrees of freedom when choosing the proper gear for each speed, thus resulting in fuel savings. Of course, we are assuming that the drivers used in the experiment that collected the data were experienced professionals, which can change gears very efficiently. Switching to manual transmission increases `mpg` (miles per U.S. galon) from `r intercept` to `r intercept + slope` in average.
+* Counter-intuitively, manual transmissions are more fuel efficient. One would think that automatic transmissions would change gears more efficiently, resulting in fuel savings, but that's not the case. The transmission type is indirectly correlated to MPG through the number of gears. In general, automatic transmissions have less gears than their manual counterparts. Greater number of gears means greater number of degrees of freedom when choosing the proper gear for each speed, thus resulting in fuel savings. Of course, we are assuming that the drivers used in the experiment that collected the data were experienced professionals, which can change gears very efficiently. Switching to manual transmission increases `mpg` (miles per U.S. galon) in `r slope_common_sense_with_am` in average.
 
 * Horsepower and vehicle's weight affect fuel efficiency much more heavily than transmission type.
 
 * Another variable correlated to fuel efficiency is the rear axle ratio, which determines the engine's RPM's (revolutions per minute) required to keep the same speed. Greater rear axle ratio results in greater engine's RPM's for the same speed, thus greater fuel consumption. 
-
