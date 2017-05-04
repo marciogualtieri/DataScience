@@ -1,11 +1,11 @@
 ---
 title: 'Workout: Dumbbell Lift Classification'
 output:
-  html_notebook:
+  html_document:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
-  html_document:
+  html_notebook:
     css: ../styles/style.css
     toc: yes
     toc_depth: 4
@@ -123,7 +123,6 @@ render_table_in_viewer_pane <- function(data, digits) {
 }
 
 render_table <- function(data, digits = 2) {
-  render_table_in_viewer_pane(data, digits)
   print(xtable(data, digits = digits), type = "html")
 }
 ```
