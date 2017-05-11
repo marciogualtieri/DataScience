@@ -152,7 +152,7 @@ format_label <- function(emission) {
   paste(format(round(emission), big.mark = ",", scientific = FALSE), 'Tons')
 }
 
-par(mar = c(4, 0, 4, 0))
+par(mar = c(4, 1, 4, 1))
 total_barplot <- barplot(total_emissions_per_year$Emissions,
                          names.arg = total_emissions_per_year$year,
                          main = "Total Emissions from PM2.5 in the U.S.",
@@ -184,7 +184,7 @@ render_table(total_emissions_per_year_baltimore)
 <br/>
 
 ```{r, fig.width = 12, fig.height = 6}
-par(mfrow = c(1, 2), mar = c(4, 4, 4, 0))
+par(mfrow = c(1, 2), mar = c(4, 4, 4, 1))
 
 title <- "Total Emissions from PM2.5 in Baltimore City, Maryland"
 
@@ -243,7 +243,7 @@ ggplot(total_emissions_per_year_and_type_baltimore, aes(year, Emissions)) +
   xlab("Year") +
   ylab("Tons") +
   theme(plot.title = element_text(size = 20, vjust = 10)) +
-  theme(plot.margin = unit(c(1, 1, 2, 0), "cm"))
+  theme(plot.margin = unit(c(1, 1, 2, 1), "cm"))
 ```
 <br/>
 All but point sources of emissions have decreased over the period from 1999 to 2008.
@@ -266,7 +266,7 @@ render_table(total_coal_emissions_per_year)
 <br/>
 
 ```{r}
-par(mar = c(4, 6, 4, 0))
+par(mar = c(4, 6, 4, 1))
 
 with(total_coal_emissions_per_year,
      plot(year, Emissions,
@@ -410,7 +410,7 @@ motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot <-
   xlab("Year") +
   ylab("Tons") +
   theme(plot.title = element_text(size = 20, vjust = 10)) +
-  theme(plot.margin = unit(c(1, 1, 1, 0), "cm")) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
   theme(legend.position = "bottom") +
   scale_fill_manual("legend", values = c("Baltimore City, Maryland" = "burlywood2", "Los Angeles, California" = "burlywood4"))
 ```
@@ -429,7 +429,7 @@ motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot <-
   xlab("Year") +
   ylab("Tons") +
   theme(plot.title = element_text(size = 20, vjust = 10)) +
-  theme(plot.margin = unit(c(1, 1, 2, 0), "cm"))
+  theme(plot.margin = unit(c(1, 1, 2, 1), "cm"))
 ```
 
 <br/>
