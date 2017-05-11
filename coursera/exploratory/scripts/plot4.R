@@ -1,8 +1,8 @@
 #
 # Library Dependencies
 #
-suppressMessages(library(xtable))  # Pretty printing dataframes
-suppressMessages(library(ggplot2)) # Plotting
+suppressMessages(library(xtable))    # Pretty printing dataframes
+suppressMessages(library(ggplot2))   # Plotting
 suppressMessages(library(gridExtra))
 
 #
@@ -34,7 +34,7 @@ total_coal_emissions_per_year <- aggregate(Emissions ~ year, summary_coal_pm25, 
 #
 png(width = 800, height = 800, file = "../plots/plot4.png")
 
-par(mar = c(4, 6, 4, 0))
+par(mar = c(4, 6, 4, 1))
 
 with(total_coal_emissions_per_year,
      plot(year, Emissions,
@@ -46,10 +46,11 @@ with(total_coal_emissions_per_year,
           cex = 4,
           col = "burlywood2"))
 axis(1, at = 1998:2010, cex.axis = 1)
-mtext(side = 1, text = "Year", line = 1.5, padj = 2, cex = 1.2)
+mtext(side = 1, text = "Year", line = 1.5, padj = 2, cex = 1.2, font = 2)
 axis(2, cex.axis = 1, las = 1)
-mtext(side = 2, text = "Tons", line=1.5, padj = -4, cex = 1.2)
+mtext(side = 2, text = "Tons", line=1.5, padj = -4, cex = 1.2, font = 2)
 title(main = "Total Emissions from Coal PM2.5 in the U.S.")
+box(lty = "solid")
 
 with(total_coal_emissions_per_year,
      lines(year, y = Emissions,

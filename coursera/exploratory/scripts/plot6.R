@@ -80,18 +80,17 @@ motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot <-
   scale_fill_manual("legend", values = c("Baltimore City, Maryland" = "burlywood2", "Los Angeles, California" = "burlywood4"))
 
 # Scatterplot
-motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot <-
-  ggplot(total_motor_vehicles_emissions_per_year_baltimore_and_los_angeles,
-         aes(x = as.factor(year), y = Emissions, fill = city)) + 
-  geom_bar(stat = "identity", position=position_dodge(), alpha = 0.5) +
-  ylim(0, 5000) +
+motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot <-
+  ggplot(total_motor_vehicles_emissions_per_year_baltimore_and_los_angeles, aes(year, Emissions)) +
+  geom_point(col = "burlywood4") +
+  geom_smooth(method="lm", col = "burlywood4", fill = "burlywood2") +
+  facet_wrap(~ city, scales = "free") + 
+  geom_text(aes(year, Emissions, label = change), data = change_labels, vjust = 1) +
   ggtitle("Total Emissions from Motor Vehicle PM2.5") +
   xlab("Year") +
   ylab("Tons") +
   theme(plot.title = element_text(size = 20, vjust = 10)) +
-  theme(plot.margin = unit(c(1, 1, 4, 1), "cm")) +
-  theme(legend.position = "bottom") +
-  scale_fill_manual("legend", values = c("Baltimore City, Maryland" = "burlywood2", "Los Angeles, California" = "burlywood4"))
+  theme(plot.margin = unit(c(1, 1, 2, 0), "cm"))
 
 # Put both plots in a single grid
 grid.arrange(motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot,
