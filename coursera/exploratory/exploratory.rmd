@@ -132,6 +132,8 @@ Source Classification Code Table:
 render_table(sample_data_frame(source_classification_code, 10))
 ```
 
+<br/>
+
 # Exploratory Data Analysis
 
 ## Total Emissions in the U.S.
@@ -142,6 +144,8 @@ render_table(sample_data_frame(source_classification_code, 10))
 total_emissions_per_year <- aggregate(Emissions ~ year, summary_scc_pm25, sum)
 render_table(total_emissions_per_year)
 ```
+
+<br/>
 
 ```{r}
 format_label <- function(emission) {
@@ -176,6 +180,8 @@ summary_scc_pm25_baltimore <- summary_scc_pm25[summary_scc_pm25$fips == "24510",
 total_emissions_per_year_baltimore <- aggregate(Emissions ~ year, summary_scc_pm25_baltimore, sum)
 render_table(total_emissions_per_year_baltimore)
 ```
+
+<br/>
 
 ```{r, fig.width = 12, fig.height = 6}
 par(mfrow = c(1, 2), mar = c(4, 4, 4, 0))
@@ -226,6 +232,8 @@ total_emissions_per_year_and_type_baltimore <- aggregate(Emissions ~ year + type
 render_table(total_emissions_per_year_and_type_baltimore)
 ```
 
+<br/>
+
 ```{r, fig.width = 10, fig.height = 10}
 ggplot(total_emissions_per_year_and_type_baltimore, aes(year, Emissions)) +
   geom_point(col = "burlywood4") +
@@ -254,6 +262,8 @@ summary_coal_pm25 <- subset(summary_scc_pm25, SCC %in% coal_scc_codes)
 total_coal_emissions_per_year <- aggregate(Emissions ~ year, summary_coal_pm25, sum)
 render_table(total_coal_emissions_per_year)
 ```
+
+<br/>
 
 ```{r}
 par(mar = c(4, 6, 4, 0))
@@ -307,6 +317,8 @@ summary_motor_vehicles_pm25_baltimore <- subset(summary_motor_vehicles_pm25, fip
 total_motor_vehicles_emissions_per_year_baltimore <- aggregate(Emissions ~ year, summary_motor_vehicles_pm25_baltimore, sum)
 render_table(total_motor_vehicles_emissions_per_year_baltimore)
 ```
+
+<br/>
 
 ```{r}
 with(total_motor_vehicles_emissions_per_year_baltimore,
