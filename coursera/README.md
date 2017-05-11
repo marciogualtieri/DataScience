@@ -4,7 +4,7 @@
 
 * [Fake News: A Graphical Exploration](https://github.com/marciogualtieri/DataScience/tree/gh-pages/coursera/fakenews).
 
-* Basic Exploratory Analysis: [PM2.5 Particle Pollution Analysis](https://github.com/marciogualtieri/DataScience/tree/master/coursera/exploratory).
+* [Basic Exploratory Analysis](https://github.com/marciogualtieri/DataScience/tree/master/coursera/exploratory).
 
 * [Basic Inferential Analysis](https://github.com/marciogualtieri/DataScience/tree/master/coursera/statistics).
 
