@@ -1,0 +1,428 @@
+---
+title: 'Exploratory Data Analysis: Fine Particular Matter Pollution in the U.S.'
+output:
+  html_document:
+    css: ./styles/style.css
+    toc: yes
+    toc_depth: 4
+  html_notebook:
+    css: ./styles/style.css
+    toc: yes
+    toc_depth: 4
+---
+
+# Installing the Required Packages
+
+You might need to install the following packages if you don't already have them:
+
+```{r, eval = FALSE}
+install.packages("xtable")
+install.packages("ggplot2")
+install.packages("gridExtra")
+install.packages("evaluate")
+```
+
+Just uncomment the packages you need and run this chunk before you run the remaining ones in this notebook.
+
+# Importing the Required Packages
+
+Once the libraries are installed, they need to be loaded as follows:
+
+```{r}
+suppressMessages(library(xtable))  # Pretty printing dataframes
+suppressMessages(library(ggplot2)) # Plotting
+suppressMessages(library(gridExtra))
+```
+
+# Overview
+
+The overall goal of this notebook is to explore the National Emissions Inventory database and see what it say about fine particulate matter pollution in the United states over the 10-year period 1999–2008.
+
+# Loading Data
+
+```{r}
+load_data <- function(url, file_name) {
+  temp_file <- tempfile()
+  download.file(url, temp_file)
+  unzip(zipfile = temp_file, files = c(file_name), exdir = "./")
+  data <- readRDS(file_name)
+  unlink(temp_file)
+  unlink(file_name)
+  data
+}
+
+summary_scc_pm25 <- load_data("https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2FNEI_data.zip",
+                              "summarySCC_PM25.rds")
+
+source_classification_code <- load_data("https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2FNEI_data.zip",
+                                        "Source_Classification_Code.rds")
+```
+
+# Data Types
+
+PM2.5 Emissions Data:
+
+```{r}
+str(summary_scc_pm25)
+```
+
+
+|column   |description                                                                                 |
+|---------|--------------------------------------------------------------------------------------------|
+|fips     |A five-digit number (represented as a string) indicating the U.S. county                    |
+|SCC      |The name of the source as indicated by a digit string (see source code classification table)|
+|Pollutant|A string indicating the pollutant                                                           |
+|Emissions|Amount of PM2.5 emitted, in tons                                                            |
+|type     |The type of source (point, non-point, on-road, or non-road)                                 |
+|year     |The year of emissions recorded                                                              |
+
+
+PM2.5 Source Types:
+
+|Type     |Description                                                                                                     |
+|---------|----------------------------------------------------------------------------------------------------------------|
+|POINT    |The U.S. Environmental Protection Agency (EPA) defines point source pollution as “any single identifiable source of pollution from which pollutants are discharged, such as a pipe, ditch, ship or factory smokestack”. Factories and sewage treatment plants are two common types of point sources.|
+|NON-POINT|Caused by rainfall or snowmelt moving over and through the ground. As the runoff moves, it picks up and carries away natural and human-made pollutants, finally depositing them into lakes, rivers, wetlands, coastal waters and ground waters.|
+|ON-ROAD  |Includes any air pollution emitted by road mobile sources, such as cars, light duty and heavy duty trucks and buses.|
+|NON-ROAD |Includes any air pollution emmited by non-road mobile sources, such as aircraft, motorboats (diesel and gasoline), locomotives and construction equipment.|
+
+<br/>
+
+Source Classification Code Table:
+
+```{r}
+str(source_classification_code)
+```
+
+<br/>
+
+The only columns that mapper to us are the following:
+
+|column    |description                                          |
+|----------|-----------------------------------------------------|
+|SCC       |The name of the source as indicated by a digit string|
+|Short.Name|Actual name of the PM2.5 source                      |
+
+# Sampling Data
+
+The following auxiliary code samples from a data frame and render a data frame into HTML:
+
+```{r}
+render_table <- function(data, digits = 2) {
+  print(xtable(data, digits = digits), type = "html")
+}
+
+sample_data_frame <- function(data, size) {
+  sample_index <- sample(1:nrow(data), size)
+  return(data[sample_index, ])
+}
+```
+
+PM2.5 Emissions Data:
+
+```{r, results="asis"}
+render_table(sample_data_frame(summary_scc_pm25, 10))
+```
+
+<br/>
+
+Source Classification Code Table:
+
+```{r, results="asis"}
+render_table(sample_data_frame(source_classification_code, 10))
+```
+
+# Exploratory Data Analysis
+
+## Total Emissions in the U.S.
+
+1. Have total emissions from PM2.5 decreased in the United States from 1999 to 2008? Using the base plotting system, make a plot showing the total PM2.5 emission from all sources for each of the years 1999, 2002, 2005, and 2008.
+
+```{r, results="asis"}
+total_emissions_per_year <- aggregate(Emissions ~ year, summary_scc_pm25, sum)
+render_table(total_emissions_per_year)
+```
+
+```{r}
+format_label <- function(emission) {
+  paste(format(round(emission), big.mark = ",", scientific = FALSE), 'Tons')
+}
+
+par(mar = c(4, 0, 4, 0))
+total_barplot <- barplot(total_emissions_per_year$Emissions,
+                         names.arg = total_emissions_per_year$year,
+                         main = "Total Emissions from PM2.5 in the U.S.",
+                         xlab ="Year",
+                         yaxt = "n",
+                         ylim = range(0, 8000000),
+                         font.lab = 2,
+                         col = "burlywood1",
+                         border = NA)
+
+text(x = total_barplot, y = total_emissions_per_year$Emissions,
+     label = sapply(total_emissions_per_year$Emissions, format_label),
+     pos = 3, cex = 1, col = "black")
+```
+
+<br/>
+The total emissions have gradually decreased from 1999 to 2008.
+
+## Total Emissions in Baltimore City
+
+2. Have total emissions from PM2.5 decreased in the Baltimore City, Maryland (fips == "24510") from 1999 to 2008? Use the base plotting system to make a plot answering this question.
+
+```{r, results="asis"}
+summary_scc_pm25_baltimore <- summary_scc_pm25[summary_scc_pm25$fips == "24510", ]
+total_emissions_per_year_baltimore <- aggregate(Emissions ~ year, summary_scc_pm25_baltimore, sum)
+render_table(total_emissions_per_year_baltimore)
+```
+
+```{r, fig.width = 12, fig.height = 6}
+par(mfrow = c(1, 2), mar = c(4, 4, 4, 0))
+
+title <- "Total Emissions from PM2.5 in Baltimore City, Maryland"
+
+barplot(total_emissions_per_year_baltimore$Emissions,
+        names.arg = total_emissions_per_year_baltimore$year,
+        main = title,
+        xlab ="Year",
+        ylab = "Tons",
+        ylim = range(0, 3500),
+        las = 1,
+        font.lab = 2,
+        col = "burlywood1",
+        border = NA)
+
+with(total_emissions_per_year_baltimore,
+     plot(year, Emissions,
+          main = title,
+          xlab ="Year",
+          ylab = "Tons",
+          xlim = range(1998, 2009),
+          ylim = range(0, 3500),
+          pch = 20,
+          cex = 3,
+          col = "burlywood2",
+          font.lab = 2,
+          las = 1))
+with(total_emissions_per_year_baltimore,
+     abline(lm(Emissions ~ year),
+            lwd = 4,
+            col = "burlywood4",
+            lty = "dotted"))
+```
+
+<br/>
+Emissons gradually decreased from 1999 to 2008, with 2005 defying the trend (increased when compared to 2002), but sharply decreased in 2008 to smaller levels than 2002. Overall, emissions are in a decreasing trend, as we can verify by the linear regression plot.
+
+## Emissions by Source
+
+3. Of the four types of sources indicated by the type (point, nonpoint, onroad, nonroad) variable, which of these four sources have seen decreases in emissions from 1999–2008 for Baltimore City? Which have seen increases in emissions from 1999–2008?
+
+Use the ggplot2 plotting system to make a plot answer this question.
+
+```{r, results="asis"}
+total_emissions_per_year_and_type_baltimore <- aggregate(Emissions ~ year + type, summary_scc_pm25_baltimore, sum)
+render_table(total_emissions_per_year_and_type_baltimore)
+```
+
+```{r, fig.width = 10, fig.height = 10}
+ggplot(total_emissions_per_year_and_type_baltimore, aes(year, Emissions)) +
+  geom_point(col = "burlywood4") +
+  geom_smooth(method="lm", col = "burlywood4", fill = "burlywood2") +
+  facet_wrap(~ type, scales = "free") + 
+  ggtitle("Total Emissions from PM2.5 in Baltimore City, Maryland per Source Type") +
+  xlab("Year") +
+  ylab("Tons") +
+  theme(plot.title = element_text(size = 20, vjust = 10)) +
+  theme(plot.margin = unit(c(1, 1, 2, 0), "cm"))
+```
+<br/>
+All but point sources of emissions have decreased over the period from 1999 to 2008.
+
+## Coal Combustion-related Sources
+
+4. Across the United States, how have emissions from coal combustion-related sources changed from 1999–2008?
+
+```{r}
+coal_scc_codes <- source_classification_code$SCC[grepl("[Cc]oal", source_classification_code$EI.Sector)]
+head(coal_scc_codes) 
+```
+
+```{r, results="asis"}
+summary_coal_pm25 <- subset(summary_scc_pm25, SCC %in% coal_scc_codes)
+total_coal_emissions_per_year <- aggregate(Emissions ~ year, summary_coal_pm25, sum)
+render_table(total_coal_emissions_per_year)
+```
+
+```{r}
+par(mar = c(4, 6, 4, 0))
+
+with(total_coal_emissions_per_year,
+     plot(year, Emissions,
+          axes = FALSE,
+          ann = FALSE,
+          xlim = range(1998, 2010),
+          ylim = range(300000, 600000),
+          pch = 20,
+          cex = 4,
+          col = "burlywood2"))
+axis(1, at = 1998:2010, cex.axis = 1)
+mtext(side = 1, text = "Year", line = 1.5, padj = 2, cex = 1.2)
+axis(2, cex.axis = 1, las = 1)
+mtext(side = 2, text = "Tons", line=1.5, padj = -4, cex = 1.2)
+title(main = "Total Emissions from Coal PM2.5 in the U.S.")
+
+with(total_coal_emissions_per_year,
+     lines(year, y = Emissions,
+           lwd = 4,
+           col = "burlywood2",
+           type = "l"))
+
+with(total_coal_emissions_per_year,
+     abline(lm(Emissions ~ year),
+            lwd = 3,
+            col = "burlywood3",
+            lty = "dotted"))
+
+with(total_coal_emissions_per_year,
+     text(x = year + 0.5, y = Emissions + 20000,
+          label = sapply(Emissions, format_label)))
+```
+
+## Motor Vehicle Sources in Baltimore City
+
+5. How have emissions from motor vehicle sources changed from 1999–2008 in Baltimore City?
+
+```{r}
+motor_vehicles_scc_codes <- source_classification_code$SCC[grepl("[Vv]ehicle",
+                                                                 source_classification_code$EI.Sector)]
+head(motor_vehicles_scc_codes)
+```
+
+```{r, results="asis"}
+summary_motor_vehicles_pm25 <- subset(summary_scc_pm25, SCC %in% motor_vehicles_scc_codes)
+summary_motor_vehicles_pm25_baltimore <- subset(summary_motor_vehicles_pm25, fips == "24510")
+total_motor_vehicles_emissions_per_year_baltimore <- aggregate(Emissions ~ year, summary_motor_vehicles_pm25_baltimore, sum)
+render_table(total_motor_vehicles_emissions_per_year_baltimore)
+```
+
+```{r}
+with(total_motor_vehicles_emissions_per_year_baltimore,
+     plot(year, Emissions,
+          main = "Total Emissions from Motor Vehicles PM2.5 in Baltimore City, Maryland",
+          xlab ="Year",
+          ylab = "Tons",
+          xlim = range(1998, 2009),
+          ylim = range(80, 400),
+          pch = 20,
+          cex = 4,
+          col = "burlywood2",
+          font.lab = 2,
+          las = 1))
+
+with(total_motor_vehicles_emissions_per_year_baltimore,
+     lines(year, y = Emissions,
+           lwd = 4,
+           col = "burlywood2",
+           type = "l"))
+
+with(total_motor_vehicles_emissions_per_year_baltimore,
+     abline(lm(Emissions ~ year),
+            lwd = 3,
+            col = "burlywood3",
+            lty = "dotted"))
+
+with(total_motor_vehicles_emissions_per_year_baltimore,
+     text(x = year + 0.5, y = Emissions + 30,
+          label = sapply(Emissions, format_label)))
+```
+
+<br/>
+It's been consistenly decreasing from 1999 to 2008.
+
+## Motor Vehicle Sources in Los Angeles
+
+6. Compare emissions from motor vehicle sources in Baltimore City with emissions from motor vehicle sources in Los Angeles County, California (fips == "06037"). Which city has seen greater changes over time in motor vehicle emissions?
+
+```{r, results="asis"}
+summary_motor_vehicles_pm25_baltimore_and_los_angeles <- subset(summary_motor_vehicles_pm25, fips == "24510" | fips == "06037")
+
+summary_motor_vehicles_pm25_baltimore_and_los_angeles$city <-
+  ifelse(summary_motor_vehicles_pm25_baltimore_and_los_angeles$fips == "24510",
+     "Baltimore City, Maryland", "Los Angeles, California")
+
+total_motor_vehicles_emissions_per_year_baltimore_and_los_angeles <-
+  aggregate(Emissions ~ year + city, summary_motor_vehicles_pm25_baltimore_and_los_angeles, sum)
+
+render_table(total_motor_vehicles_emissions_per_year_baltimore_and_los_angeles)
+```
+
+<br/>
+
+```{r, results="asis"}
+fit_baltimore <- lm(Emissions ~ year,
+                    data = subset(total_motor_vehicles_emissions_per_year_baltimore_and_los_angeles,
+                                  city == "Baltimore City, Maryland"))
+
+fit_los_angeles <- lm(Emissions ~ year,
+                    data = subset(total_motor_vehicles_emissions_per_year_baltimore_and_los_angeles,
+                                  city == "Los Angeles, California"))
+change_baltimore <- coef(fit_baltimore)[2]
+change_los_angeles <- coef(fit_los_angeles)[2]
+
+format_change_label <- function(change) {
+  paste(format(round(as.numeric(change)), big.mark = ",", scientific = FALSE), "Tons / Year")
+}
+
+change_labels <- data.frame(year = 2004,
+                            Emissions = Inf,
+                            change = c(change_baltimore, change_los_angeles),
+                            city = c("Baltimore City, Maryland", "Los Angeles, California"))
+change_labels$change <- sapply(change_labels$change, format_change_label)
+
+render_table(change_labels)
+```
+
+<br/>
+The barplot will contrast the difference in emission levels between Baltimore and Los Angeles:
+
+```{r}
+motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot <-
+  ggplot(total_motor_vehicles_emissions_per_year_baltimore_and_los_angeles,
+         aes(x = as.factor(year), y = Emissions, fill = city)) + 
+  geom_bar(stat = "identity", position=position_dodge(), alpha = 0.5) +
+  ylim(0, 5000) +
+  ggtitle("Total Emissions from Motor Vehicle PM2.5") +
+  xlab("Year") +
+  ylab("Tons") +
+  theme(plot.title = element_text(size = 20, vjust = 10)) +
+  theme(plot.margin = unit(c(1, 1, 1, 0), "cm")) +
+  theme(legend.position = "bottom") +
+  scale_fill_manual("legend", values = c("Baltimore City, Maryland" = "burlywood2", "Los Angeles, California" = "burlywood4"))
+```
+
+<br/>
+The scatterplots with regression lines will show how the levels change over the years:
+
+```{r}
+motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot <-
+  ggplot(total_motor_vehicles_emissions_per_year_baltimore_and_los_angeles, aes(year, Emissions)) +
+  geom_point(col = "burlywood4") +
+  geom_smooth(method="lm", col = "burlywood4", fill = "burlywood2") +
+  facet_wrap(~ city, scales = "free") + 
+  geom_text(aes(year, Emissions, label = change), data = change_labels, vjust = 1) +
+  ggtitle("Total Emissions from Motor Vehicle PM2.5") +
+  xlab("Year") +
+  ylab("Tons") +
+  theme(plot.title = element_text(size = 20, vjust = 10)) +
+  theme(plot.margin = unit(c(1, 1, 2, 0), "cm"))
+```
+
+<br/>
+Here are both plots sharing the same grid:
+
+```{r, fig.width = 12, fig.height = 6}
+grid.arrange(motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot,
+             motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot, ncol = 2)
+```
