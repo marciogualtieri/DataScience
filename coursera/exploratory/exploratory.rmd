@@ -265,7 +265,7 @@ render_table(total_coal_emissions_per_year)
 
 <br/>
 
-```{r}
+```{r, fig.width = 8, fig.height = 8}
 par(mar = c(4, 6, 4, 1))
 
 with(total_coal_emissions_per_year,
@@ -320,7 +320,9 @@ render_table(total_motor_vehicles_emissions_per_year_baltimore)
 
 <br/>
 
-```{r}
+```{r, fig.width = 8, fig.height = 8}
+par(mar = c(4, 4, 4, 1))
+
 with(total_motor_vehicles_emissions_per_year_baltimore,
      plot(year, Emissions,
           main = "Total Emissions from Motor Vehicles PM2.5 in Baltimore City, Maryland",
@@ -435,7 +437,7 @@ motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot <-
 <br/>
 Here are both plots sharing the same grid:
 
-```{r, fig.width = 12, fig.height = 6}
+```{r, fig.width = 12, fig.height = 12}
 grid.arrange(motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot,
-             motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot, ncol = 2)
+             motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot, ncol = 1)
 ```
