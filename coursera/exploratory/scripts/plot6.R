@@ -4,6 +4,7 @@
 suppressMessages(library(xtable))    # Pretty printing dataframes
 suppressMessages(library(ggplot2))   # Plotting
 suppressMessages(library(gridExtra))
+suppressMessages(library(grid))
 
 #
 # Data Load
@@ -63,7 +64,7 @@ change_labels$change <- sapply(change_labels$change, format_change_label)
 #
 # Plot: Total Emissions from Motor Vehicles PM2.5 in Baltimore City, Maryland and Los Angeles, California vs. Year
 #
-png(width = 1000, height = 500, file = "../plots/plot6.png")
+png(width = 600, height = 800, file = "../plots/plot6.png")
 
 # Barplot
 motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot <-
@@ -71,10 +72,8 @@ motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot <-
          aes(x = as.factor(year), y = Emissions, fill = city)) + 
   geom_bar(stat = "identity", position=position_dodge(), alpha = 0.5) +
   ylim(0, 5000) +
-  ggtitle("Total Emissions from Motor Vehicle PM2.5") +
   xlab("Year") +
   ylab("Tons") +
-  theme(plot.title = element_text(size = 20, vjust = 10)) +
   theme(plot.margin = unit(c(1, 1, 1, 0), "cm")) +
   theme(legend.position = "bottom") +
   scale_fill_manual("legend", values = c("Baltimore City, Maryland" = "burlywood2", "Los Angeles, California" = "burlywood4"))
@@ -86,14 +85,14 @@ motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot <-
   geom_smooth(method="lm", col = "burlywood4", fill = "burlywood2") +
   facet_wrap(~ city, scales = "free") + 
   geom_text(aes(year, Emissions, label = change), data = change_labels, vjust = 1) +
-  ggtitle("Total Emissions from Motor Vehicle PM2.5") +
   xlab("Year") +
   ylab("Tons") +
-  theme(plot.title = element_text(size = 20, vjust = 10)) +
   theme(plot.margin = unit(c(1, 1, 2, 0), "cm"))
 
 # Put both plots in a single grid
 grid.arrange(motor_vehicles_emissions_per_year_baltimore_and_los_angeles_barplot,
-             motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot, ncol = 2)
+             motor_vehicles_emissions_per_year_baltimore_and_los_angeles_scatterplot, ncol = 1,
+             top = textGrob("Total Emissions from Motor Vehicle PM2.5",
+                            gp = gpar(fontsize = 16, fontface = "bold")))
 
 dev.off ()

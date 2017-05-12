@@ -39,7 +39,7 @@ ggplot(total_emissions_per_year_and_type_baltimore, aes(year, Emissions)) +
   ggtitle("Total Emissions from PM2.5 in Baltimore City, Maryland per Source Type") +
   xlab("Year") +
   ylab("Tons") +
-  theme(plot.title = element_text(size = 20, vjust = 10)) +
-  theme(plot.margin = unit(c(1, 1, 2, 1), "cm"))
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5, margin = margin(b = 30, unit = "pt"))) +
+  theme(plot.margin = unit(c(1, 1, 1, 1), "cm"))
 
 dev.off ()

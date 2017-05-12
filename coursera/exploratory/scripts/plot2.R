@@ -33,13 +33,10 @@ total_emissions_per_year_baltimore <- aggregate(Emissions ~ year, summary_scc_pm
 #
 png(width = 1000, height = 500, file = "../plots/plot2.png")
 
-par(mfrow = c(1, 2), mar = c(4, 4, 4, 1))
-
-title <- "Total Emissions from PM2.5 in Baltimore City, Maryland"
+par(mfrow = c(1, 2), mar = c(4, 4, 4, 1), oma = c(0, 0, 2, 0))
 
 barplot(total_emissions_per_year_baltimore$Emissions,
         names.arg = total_emissions_per_year_baltimore$year,
-        main = title,
         xlab ="Year",
         ylab = "Tons",
         ylim = range(0, 3500),
@@ -50,7 +47,6 @@ barplot(total_emissions_per_year_baltimore$Emissions,
 
 with(total_emissions_per_year_baltimore,
      plot(year, Emissions,
-          main = title,
           xlab ="Year",
           ylab = "Tons",
           xlim = range(1998, 2009),
@@ -65,5 +61,7 @@ with(total_emissions_per_year_baltimore,
             lwd = 4,
             col = "burlywood4",
             lty = "dotted"))
+
+mtext("Total Emissions from PM2.5 in Baltimore City, Maryland", outer = TRUE, cex = 1.5, font = 2)
 
 dev.off ()
