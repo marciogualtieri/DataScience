@@ -186,12 +186,12 @@ render_table(total_emissions_per_year_baltimore)
 <br/>
 
 ```{r, fig.width = 12, fig.height = 6}
-par(mfrow = c(1, 2), mar = c(4, 4, 4, 1), oma = c(0, 0, 2, 0))
+par(mfrow = c(1, 2), mar = c(4, 4, 4, 1), oma = c(2, 2, 2, 0))
 
 barplot(total_emissions_per_year_baltimore$Emissions,
         names.arg = total_emissions_per_year_baltimore$year,
-        xlab ="Year",
-        ylab = "Tons",
+        xlab = NA,
+        ylab = NA,
         ylim = range(0, 3500),
         las = 1,
         font.lab = 2,
@@ -200,8 +200,8 @@ barplot(total_emissions_per_year_baltimore$Emissions,
 
 with(total_emissions_per_year_baltimore,
      plot(year, Emissions,
-          xlab ="Year",
-          ylab = "Tons",
+          xlab = NA,
+          ylab = NA,
           xlim = range(1998, 2009),
           ylim = range(0, 3500),
           pch = 20,
@@ -216,6 +216,9 @@ with(total_emissions_per_year_baltimore,
             lty = "dotted"))
 
 mtext("Total Emissions from PM2.5 in Baltimore City, Maryland", outer = TRUE, cex = 1.5, font = 2)
+
+mtext(side = 1, text = "Year", outer = TRUE, cex = 1.2, font = 2)
+mtext(side = 2, text = "Tons", outer = TRUE, cex = 1.2, font = 2)
 ```
 
 <br/>
