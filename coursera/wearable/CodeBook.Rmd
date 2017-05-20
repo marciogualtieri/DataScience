@@ -1,0 +1,240 @@
+---
+title: 'Codebook for Wearable Computing: Human Activity Recognition Using Smartphones'
+output:
+  md_document:
+    variant: markdown_github
+    toc: yes
+    toc_depth: 4
+    df_print: "kable"
+---
+
+# Installing the Required Packages
+
+You might need to install the following packages if you don't already have them:
+
+```{r, eval = FALSE}
+install.packages("xtable")
+install.packages("dplyr")
+```
+
+Just uncomment the packages you need and run this chunk before you run the remaining ones in this notebook.
+
+# Importing the Required Packages
+
+Once the libraries are installed, they need to be loaded as follows:
+
+```{r}
+suppressMessages(library(xtable))  # Pretty printing dataframes
+suppressMessages(library(dplyr))
+```
+
+# Downloading the Data
+
+The data is packaged in a zip file and can be downloaded from the given remove URL:
+
+```{r}
+download_zipped_data <- function(url, destination) {
+  temp_file <- tempfile()
+  download.file(url, temp_file)
+  unzip(zipfile = temp_file, exdir = destination)
+  unlink(temp_file)
+}
+
+download_zipped_data("https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip",
+                     "./data")
+```
+
+# Description of the Raw Data
+
+Here are the the unzipped files contained in the data-set package:
+
+```{r}
+list.files(path = "./data", recursive = TRUE)
+```
+
+Follows a short description for each one of the available files:
+
+|File                        |Commentary                                                                                     |
+|----------------------------|-----------------------------------------------------------------------------------------------|
+|README.txt                  |An overview of the experiment performed to collect the data.                                   |
+|features_info.txt           |A brief description of the variables (measurements) contained in the data-set.                 |    
+|features.txt                |A list of the available variables (measurements) with their respective index numbers.          |
+|activity_labels.txt         |A list of activities, i.e., walking, sitting, stading, etc with their respective indexes.      |
+|train/X_train.txt           |"X" is a matrix with training feature data (does not contain headers).                         |
+|train/y_train.txt           |"Y" is a vector with the label/response for the training data.                                 |
+|train/subject_train.txt     |"subject" is a vector with the subject ID's for the training data.                             |
+|train/Inertial Signals/*.txt|The original pre-processed training data.                                                      |
+|test/X_test.txt             |"X" is a matrix with testing feature data (does not contain headers).                          |
+|test/y_test.txt             |"Y" is a vector with the label/response for the test data.                                     |
+|test/subject_test.txt       |"subject" is a vector with the subject ID's for the test data.                                 |
+|test/Inertial Signals/*.txt |The original pre-processed test data.                                                          |
+
+The pre-processed data ("Inertial Signals" folders) has been collected from human subjects carrying cellphones equipped with built-in accelerometers and gyroscopes. The purpose of the experiment is to use these measurements to classify different categories of human activities (walking, sitting, standing, etc) performed by human subjects.
+
+The accelerometers and gyroscopes produce tri-axial measurements (carthesian X, Y & Z components) for the acceleration (in units of "g", that is, 1 g = 9.764 m/s2) and angular velocity (radians/second) respectively.
+
+These measurements are collected overtime at a constant rate of 50 Hz, that is, every 1/50 seconds (thus, the respective variables are prefixed with 't', which stands for "time domain signal").
+
+The acceleration has components due to the Earth's gravity and due to body motion. Given that the Earth's gravity is constant (therefore low frequency), the providers of the data used a low-pass filter to separate the action due to the Earth's gravity from the action due to body motion. The body variables are infixed with "body", while gravity variables are infixed with "gravity".
+
+A Fast Fourier Transform (FFT) for the given sampling frequency of 50 Hz and with a number of bins equal to the number of observations was applied to the time based signal for each of these variables, generationg the "frequency domain signals" (resulting variables are prefixed with 'f').
+
+For the purpose of data exploration, we are not interested in the pre-processed data nor the subjects id's, thus, we're going to work with the following files:
+
+|File               |Commentary                                                |
+|-------------------|----------------------------------------------------------|
+|train/X_train.txt  |training feature data.                                    |
+|train/y_train.txt  |training label data.                                      |
+|test/X_test.txt    |test feature data.                                        |
+|test/y_test.txt    |test label data.                                          |
+|features.txt       |feature names which map to feature index numbers.         |
+|activity_labels.txt|human-readable labels which map to activity index numbers.|
+
+
+
+# Loading Data
+
+```{r}
+test_data <- read.table("./data/UCI HAR Dataset/test/X_test.txt", stringsAsFactors = FALSE)
+dim(test_data)
+```
+
+```{r}
+train_data <- read.table("./data/UCI HAR Dataset/train/X_train.txt", stringsAsFactors = FALSE)
+dim(train_data)
+```
+
+The feature data contains `r dim(test_data)[2]` feature variables and `r ncol(test_data) + ncol(train_data)` observations (adding up testing and training data-sets).
+
+```{r}
+features <- read.table("./data/UCI HAR Dataset/features.txt", stringsAsFactors = FALSE)
+str(features)
+```
+
+As expected, the feature names data contains `r ncol(features)`, which matches with the number of columns in the feature data.
+
+Note that 
+
+```{r}
+feature_names <- features[, 2]
+sample(feature_names, 6)
+```
+
+
+```{r}
+test_labels <- read.table("./data/UCI HAR Dataset/test/y_test.txt", stringsAsFactors = FALSE)
+dim(test_labels)
+```
+
+```{r}
+train_labels <- read.table("./data/UCI HAR Dataset/train/y_train.txt", stringsAsFactors = FALSE)
+dim(train_labels)
+```
+
+```{r}
+variables <- c(feature_names, "ActivityID")
+mean_variables <- grep("mean\\(\\)", variables, value = TRUE)
+std_variables <- grep("std\\(\\)", variables, value = TRUE)
+sample(variables, 6)
+sample(mean_variables, 6)
+sample(std_variables, 6)
+```
+
+```{r}
+add_labels <- function(data, labels) {
+  data <- cbind(data, labels)
+  data
+}
+
+test_data <- add_labels(test_data, test_labels)
+dim(test_data)
+```
+
+
+```{r}
+add_variable_names <- function(data) {
+  names(data) <- variables
+  data
+}
+
+test_data <- add_variable_names(test_data)
+sample(names(test_data), 6)
+```
+
+```{r}
+select_mean_and_std_variables <- function(data)
+  data[, c(mean_variables, std_variables, "ActivityID")]
+
+
+test_data <- select_mean_and_std_variables(test_data)
+names(test_data)
+```
+
+```{r}
+normalize_variable_names <- function(data) {
+  names(data) <- make.names(names(data))
+  names(data) <- gsub("\\.", "", names(data))
+  names(data) <- gsub("mean", "Mean", names(data))
+  names(data) <- gsub("std", "Sigma", names(data))
+  names(data) <- gsub("Acc", "Acceleration", names(data))
+  names(data) <- gsub("Mag", "Magnitude", names(data))
+  data
+}
+
+sample_data_frame <- function(data, size) {
+  sample_index <- sample(1:nrow(data), size)
+  return(data[sample_index, ])
+}
+
+test_data <- normalize_variable_names(test_data)
+sample_data_frame(test_data, 6)
+```
+
+```{r}
+activities <- read.table("./data/UCI HAR Dataset/activity_labels.txt")
+dim(activities)
+```
+
+```{r}
+names(activities) <- c("ActivityID", "ActivityLabel")
+str(activities)
+```
+```{r}
+add_activity_label_variable <- function(data, activities) {
+  data <- merge(data, activities)
+  data <- data[, !names(data) %in% c("ActivityID")]
+  data
+}
+
+test_data <- add_activity_label_variable(test_data, activities)
+sample_data_frame(test_data, 6)
+```
+
+```{r}
+cleanup_data <- function(data, labels) {
+  data <- add_labels(data, labels)
+  data <- add_variable_names(data)
+  data <- select_mean_and_std_variables(data)
+  data <- normalize_variable_names(data)
+  add_activity_label_variable(data, activities)
+}
+
+train_data <- cleanup_data(train_data, train_labels)
+sample_data_frame(train_data, 6)
+```
+
+```{r}
+all_data <- rbind(test_data, train_data)
+dim(all_data)
+```
+
+
+```{r}
+activity_averages_data <- all_data %>% group_by(ActivityLabel) %>% summarise_each(funs(mean))
+activity_averages_data
+```
+
+```{r}
+sample_data_frame(all_data, 6)
+```
+
