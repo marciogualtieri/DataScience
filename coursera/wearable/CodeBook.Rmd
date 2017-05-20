@@ -292,8 +292,7 @@ The following tables describe all the variables in the clean data-set:
 
 <br/>
 
->
-> **Notes: **
+> **Note:**
 >
 > - Acceleration Units: Number of g's.
 >
@@ -304,7 +303,6 @@ The following tables describe all the variables in the clean data-set:
 > - Giro (Angular Velocity) Units: radians per second.
 >
 > - Prefix 't' stands for "time domain signal", 'f' for "frequency domain signal".
->
 
 <br/>
 
