@@ -290,7 +290,6 @@ dim(all_data)
 
 The following tables describe all the variables in the clean data-set:
 
->
 > **Notes:**
 >
 > Acceleration Units: Number of g's.
