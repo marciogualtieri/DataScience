@@ -111,5 +111,5 @@ averages_data <- all_data %>% group_by(ActivityName) %>% summarise_each(funs(mea
 
 # Save data to disk
 dir.create("./tidy_data")
-write.csv(all_data, "./tidy_data/activity_data.csv")
-write.csv(averages_data, "./tidy_data/activity_averages_data.csv")
+write.table(all_data, "./tidy_data/activity_data.txt", row.name = FALSE)
+write.table(averages_data, "./tidy_data/activity_averages_data.txt", row.name = FALSE )
