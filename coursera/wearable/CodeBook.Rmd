@@ -290,20 +290,19 @@ dim(all_data)
 
 The following tables describe all the variables in the clean data-set:
 
-**Notes:**
 >
-> Acceleration Units: Number of g's.
+> **Notes: **
 >
-> "Acceleration Jerk" or simply [jerk](https://en.wikipedia.org/wiki/Jerk_(physics)) is the rate of change of the acceleration.
+> - Acceleration Units: Number of g's.
 >
-> Jerk Units: Number of g's per second.
+> - "Acceleration Jerk" or simply [jerk](https://en.wikipedia.org/wiki/Jerk_(physics)) is the rate of change of the acceleration.
 >
-> Giro (Angular Velocity) Units: radians per second.
+> - Jerk Units: Number of g's per second.
 >
-> Prefix 't' stands for "time domain signal", 'f' for "frequency domain signal".
+> - Giro (Angular Velocity) Units: radians per second.
 >
-
-<br/>
+> - Prefix 't' stands for "time domain signal", 'f' for "frequency domain signal".
+>
 
 |Activity Variable|Description                                                                                                 |
 |-----------------|------------------------------------------------------------------------------------------------------------|
@@ -346,8 +345,6 @@ The following tables describe all the variables in the clean data-set:
 |---------------------------------|------------------------------------------------------------------------------------------------|
 |[tf]BodyGyroSigma[XYZ]           |Standard Deviation of each component (X, Y & Z) of the angular velocity due to body motion.     |
 |[tf]BodyGyroMagnitudeSigma       |Standard Deviation of the magnitude (modulus) of the angular velocity vector due to body motion.|
-
-<br/>
 
 ## Computing Averages per Activity
 
