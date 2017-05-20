@@ -112,4 +112,4 @@ averages_data <- all_data %>% group_by(ActivityName) %>% summarise_each(funs(mea
 # Save data to disk
 dir.create("./tidy_data")
 write.table(all_data, "./tidy_data/activity_data.txt", row.name = FALSE)
-write.table(averages_data, "./tidy_data/activity_averages_data.txt", row.name = FALSE )
+write.table(averages_data, "./tidy_data/activity_averages_data.txt", row.name = FALSE)
