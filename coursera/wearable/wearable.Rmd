@@ -5,6 +5,7 @@ output:
     toc: yes
     toc_depth: 4
     variant: markdown_github
+    df_print: "kable"
 ---
 
 # Installing the Required Packages
