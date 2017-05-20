@@ -83,13 +83,13 @@ test_data <- normalize_variable_names(test_data)
 
 
 # Join feature and label data with activity data
-names(activities) <- c("ActivityID", "ActivityLabel")
-add_activity_label_variable <- function(data, activities) {
+names(activities) <- c("ActivityID", "ActivityName")
+add_activity_name_variable <- function(data, activities) {
   data <- merge(data, activities)
   data <- data[, !names(data) %in% c("ActivityID")]
   data
 }
-test_data <- add_activity_label_variable(test_data, activities)
+test_data <- add_activity_name_variable(test_data, activities)
 
 # Putting all transformations together in a single function
 cleanup_data <- function(data, labels) {
@@ -97,7 +97,7 @@ cleanup_data <- function(data, labels) {
   data <- add_variable_names(data)
   data <- select_mean_and_std_variables(data)
   data <- normalize_variable_names(data)
-  add_activity_label_variable(data, activities)
+  add_activity_name_variable(data, activities)
 }
 
 # Apply the transformation to the training data-set
@@ -106,6 +106,10 @@ train_data <- cleanup_data(train_data, train_labels)
 # Bind training and testing data together
 all_data <- rbind(test_data, train_data)
 
+# Compute Averages per Activity
+averages_data <- all_data %>% group_by(ActivityName) %>% summarise_each(funs(mean))
+
 # Save data to disk
+dir.create("./tidy_data")
 write.csv(all_data, "./tidy_data/activity_data.csv")
 write.csv(averages_data, "./tidy_data/activity_averages_data.csv")

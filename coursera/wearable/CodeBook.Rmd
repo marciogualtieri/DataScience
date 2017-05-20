@@ -149,7 +149,7 @@ dim(train_labels)
 
 Later on we will bind feature and label data together in a single data-set.
 
-#### Activity Label Data
+#### Activity Names Data
 
 ```{r}
 activities <- read.table("./data/UCI HAR Dataset/activity_labels.txt")
@@ -237,26 +237,26 @@ sample_data_frame(test_data, 6)
 
 I could have expanded 't' to something like "TimeDomainSignal" and 'f' to "FrequencyDomainSignal", but I think that's unnecessary and make the variable names too big.
 
-### Joining with Activity Label Data
+### Joining with Activity Names Data
 
-Here we join the measurements data with the activity label data by "ActivityID":
+Here we join the measurements data with the activity names data by "ActivityID":
 
 ```{r}
-names(activities) <- c("ActivityID", "ActivityLabel")
+names(activities) <- c("ActivityID", "ActivityName")
 str(activities)
 ```
 ```{r}
-add_activity_label_variable <- function(data, activities) {
+add_activity_name_variable <- function(data, activities) {
   data <- merge(data, activities)
   data <- data[, !names(data) %in% c("ActivityID")]
   data
 }
 
-test_data <- add_activity_label_variable(test_data, activities)
+test_data <- add_activity_name_variable(test_data, activities)
 sample_data_frame(test_data, 6)
 ```
 
-We also remove "ActivityID", given that "ActivityLabel" is better suited for data exploration.
+We also remove "ActivityID", given that "ActivityName" is better suited for data exploration (more readable).
 
 ### Putting All Transformations Together
 
@@ -268,7 +268,7 @@ cleanup_data <- function(data, labels) {
   data <- add_variable_names(data)
   data <- select_mean_and_std_variables(data)
   data <- normalize_variable_names(data)
-  add_activity_label_variable(data, activities)
+  add_activity_name_variable(data, activities)
 }
 ```
 
@@ -290,9 +290,9 @@ dim(all_data)
 
 The following tables describe all the variables in the clean data-set:
 
-|Activity Variable|Description                                                                                                  |
-|-----------------|-------------------------------------------------------------------------------------------------------------|
-|ActivityLabel    |A descriptive label for the activity, i.e.: LAYING, SITTING, WALKING, WALKING_UPSTAIRS or WALKING_DOWNSTAIRS.|
+|Activity Variable|Description                                                                                                 |
+|-----------------|------------------------------------------------------------------------------------------------------------|
+|ActivityName     |A descriptive name for the activity, i.e.: LAYING, SITTING, WALKING, WALKING_UPSTAIRS or WALKING_DOWNSTAIRS.|
 
 <br/>
 
@@ -373,7 +373,7 @@ The following tables describe all the variables in the clean data-set:
 The following data-set has been grouped by activity and all columns summarised into their respective means:
 
 ```{r}
-averages_data <- all_data %>% group_by(ActivityLabel) %>% summarise_each(funs(mean))
+averages_data <- all_data %>% group_by(ActivityName) %>% summarise_each(funs(mean))
 averages_data
 ```
 
@@ -382,6 +382,7 @@ averages_data
 Let's finally save our clean data-sets to `*.csv` files:
 
 ```{r}
+dir.create("./tidy_data")
 write.csv(all_data, "./tidy_data/activity_data.csv")
 write.csv(averages_data, "./tidy_data/activity_averages_data.csv")
 ```
