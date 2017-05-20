@@ -1,5 +1,4 @@
 ---
-title: 'Wearable Computing: Human Activity Recognition Using Smartphones'
 output:
   md_document:
     toc: yes
@@ -7,6 +6,8 @@ output:
     variant: markdown_github
     df_print: "kable"
 ---
+
+<h1>Wearable Computing: Human Activity Recognition Using Smartphones</h1>
 
 # Installing the Required Packages
 
@@ -44,7 +45,7 @@ download_zipped_data("https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfil
                      "./data")
 ```
 
-# Raw Data
+# Description of Raw Data
 
 Here are the the unzipped files contained in the data-set package:
 
