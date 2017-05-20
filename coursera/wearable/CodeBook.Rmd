@@ -290,19 +290,25 @@ dim(all_data)
 
 The following tables describe all the variables in the clean data-set:
 
-|Activity Variable|Description                                                                                                 |
-|-----------------|------------------------------------------------------------------------------------------------------------|
-|ActivityName     |A descriptive name for the activity, i.e.: LAYING, SITTING, WALKING, WALKING_UPSTAIRS or WALKING_DOWNSTAIRS.|
-
-<br/>
-
-> **Note:**
+>
+> **Notes:**
 >
 > Acceleration Units: Number of g's.
 >
+> "Acceleration Jerk" or simply [jerk](https://en.wikipedia.org/wiki/Jerk_(physics)) is the rate of change of the acceleration.
+>
+> Jerk Units: Number of g's per second.
+>
+> Giro (Angular Velocity) Units: radians per second.
+>
 > Prefix 't' stands for "time domain signal", 'f' for "frequency domain signal".
+>
 
 <br/>
+
+|Activity Variable|Description                                                                                                 |
+|-----------------|------------------------------------------------------------------------------------------------------------|
+|ActivityName     |A descriptive name for the activity, i.e.: LAYING, SITTING, WALKING, WALKING_UPSTAIRS or WALKING_DOWNSTAIRS.|
 
 |Acceleration Mean Variables         |Description                                                               |
 |------------------------------------|--------------------------------------------------------------------------|
@@ -311,24 +317,12 @@ The following tables describe all the variables in the clean data-set:
 |[tf]GravityAccelerationMean[XYZ]    |Mean of each component (X, Y & Z) of acceleration due to gravity.         |
 |[tf]GravityAccelerationMagnitudeMean|Mean of the magnitude (modulus) of acceleration vector due to gravity.    |
 
-<br/>
-
 |Acceleration Standard Deviation Variables|Description                                                                             |
 |-----------------------------------------|----------------------------------------------------------------------------------------|
 |[tf]BodyAccelerationSigma[XYZ]           |Standard Deviation of each component (X, Y & Z) of acceleration due to body motion.     |
 |[tf]BodyAccelerationMagnitudeSigma       |Standard Deviation of the magnitude (modulus) of acceleration vector due to body motion.|
 |[tf]GravityAccelerationSigma[XYZ]        |Standard Deviation of each component (X, Y & Z) of acceleration due to gravity.         |
 |[tf]GravityAccelerationMagnitudeSigma    |Standard Deviation of the magnitude (modulus) of acceleration vector due to gravity.    |
-
-<br/>
-
-> **Note:**
->
-> "Acceleration Jerk" or simply [jerk](https://en.wikipedia.org/wiki/Jerk_(physics)) is the rate of change of the acceleration.
->
-> Jerk Units: Number of g's per second.
-
-<br/>
 
 |Acceleration Jerk Mean Variables        |Description                                                       |
 |----------------------------------------|------------------------------------------------------------------|
@@ -337,8 +331,6 @@ The following tables describe all the variables in the clean data-set:
 |[tf]GravityAccelerationJerkMean[XYZ]    |Mean of each component (X, Y & Z) of jerk due to gravity.         |
 |[tf]GravityAccelerationJerkMagnitudeMean|Mean of the magnitude (modulus) of jerk vector due to gravity.    |
 
-<br/>
-
 |Acceleration Jerk Standard Deviation Variables|Description                                                                     |
 |----------------------------------------------|--------------------------------------------------------------------------------|
 |[tf]BodyAccelerationJerkSigma[XYZ]            |Standard Deviation of each component (X, Y & Z) of jerk due to body motion.     |
@@ -346,20 +338,10 @@ The following tables describe all the variables in the clean data-set:
 |[tf]GravityAccelerationJerkSigma[XYZ]         |Standard Deviation of each component (X, Y & Z) of jerk due to gravity.         |
 |[tf]GravityAccelerationJerkMagnitudeSigma     |Standard Deviation of the magnitude (modulus) of jerk vector due to gravity.    |
 
-<br/>
-
-> **Note:**
->
-> Giro (Angular Velocity) Units: radians per second.
-
-<br/>
-
 |Gyro Mean Variables      |Description                                                                       |
 |-------------------------|----------------------------------------------------------------------------------|
 |[tf]BodyGyroMean[XYZ]    |Mean of each component (X, Y & Z) of the angular velocity due to body motion.     |
 |[tf]BodyGyroMagnitudeMean|Mean of the magnitude (modulus) of the angular velocity vector due to body motion.|
-
-<br/>
 
 |Gyro Standard Deviation Variables|Description                                                                                     |
 |---------------------------------|------------------------------------------------------------------------------------------------|
