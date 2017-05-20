@@ -48,7 +48,7 @@ download_zipped_data("https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfil
 
 ### Data Files
 
-Here's a list of the the unzipped files:
+Here's a list of the unzipped files:
 
 ```{r}
 list.files(path = "./data", recursive = TRUE)
@@ -76,19 +76,19 @@ Follows a short description of its contents:
 
 ### Data Overview
 
-The pre-processed data ("Inertial Signals" folders) has been collected from human subjects carrying cellphones equipped with built-in accelerometers and gyroscopes. The purpose of the experiment that collected this data is to use these measurements to classify different categories of human activities performed by human subjects (walking, sitting, standing, etc).
+The pre-processed data ("Inertial Signals" folders) has been collected from human subjects carrying cellphones equipped with built-in accelerometers and gyroscopes. The purpose of the experiment that collected this data is to use these measurements to classify different categories of activities performed by human subjects (walking, sitting, standing, etc).
 
-The accelerometers and gyroscopes produce tri-axial measurements (carthesian X, Y & Z components) for the acceleration (in number of g's, where "g" is the Earth's gravitational acceleration, that is, ~ 9.764 m/s2) and angular velocity (in radians per second) respectively.
+The accelerometers and gyroscopes produce tri-axial measurements (carthesian X, Y & Z components) for the acceleration (in number of g's, where "g" is the Earth's gravitational acceleration, i.e., ~ 9.764 m/s2) and angular velocity (in radians per second) respectively.
 
-These measurements are collected overtime at a constant rate of 50 Hz, that is, a measurement is performed every 1/50 seconds (thus, the respective variables prefixed with 't', which stands for "time domain signal").
+These measurements are collected overtime at a constant rate of 50 Hz, i.e., a measurement is performed every 1/50 seconds (thus, the respective variables prefixed with 't', which stands for "time domain signal").
 
-The acceleration measured has components due to the Earth's gravity and due to the subject's body motion. Given that the Earth's gravity is constant (therefore low frequency), a low-pass filter was used to separate the action due to the Earth's gravity from the action due to body motion. The body variables are infixed with "body", while gravity variables are infixed with "gravity".
+The acceleration measured has components due to the Earth's gravity and due to the subject's body motion. Given that the Earth's gravity is constant (low frequency), a low-pass filter was used to separate the action due to the Earth's gravity from the action due to body motion. The body variables are infixed with "body", while gravity variables are infixed with "gravity".
 
-A Fast Fourier Transform for the given sampling frequency of 50 Hz and with a number of bins equal to the number of observations was applied to the time based signal variables, generationg the "frequency domain signal" variables (which are prefixed with 'f').
+A Fast Fourier Transform for the given sampling frequency of 50 Hz and with a number of bins equal to the number of observations was applied to the "time domain signal"" variables, to generate the "frequency domain signal" variables (which are prefixed with 'f').
 
-Finally, these measurements were used to estimate variables for mean, standard deviation, median, max, min, etc (you will find the full list of estimated variables in `features_info.txt`). These estimated variables comprise the data for the given training and testing data-sets.
+Finally, these measurements were used to estimate variables for mean, standard deviation, median, max, min, etc. You will find the full list of estimated variables in `features_info.txt`. These estimated variables comprise the data for the given raw training and testing data-sets.
 
-For the purpose of data exploration, we are not interested in the pre-processed data nor the subject id's, thus, we're going to work with the following files:
+For the purpose of this data exploration, we are not interested in the pre-processed data nor the subject id's, thus, we're going to work with the following files:
 
 |File               |Commentary                                                |
 |-------------------|----------------------------------------------------------|
@@ -115,18 +115,18 @@ train_data <- read.table("./data/UCI HAR Dataset/train/X_train.txt", stringsAsFa
 dim(train_data)
 ```
 
-#### Feature Names
+The feature data contains `r ncol(test_data)` feature variables and `r nrow(test_data) + nrow(train_data)` observations (adding up testing and training data-sets).
 
-The feature data contains `r dim(test_data)[2]` feature variables and `r ncol(test_data) + ncol(train_data)` observations (adding up testing and training data-sets).
+#### Feature Names
 
 ```{r}
 features <- read.table("./data/UCI HAR Dataset/features.txt", stringsAsFactors = FALSE)
 str(features)
 ```
 
-As expected, the list of feature names contains `r ncol(features)` entries, which matches with the number of columns in the feature data.
+As expected, the list of feature names contains `r nrow(features)` entries, which matches with the number of columns in the feature data.
 
-Given that we only need the feature names, let's create a new variable without the indexes (columns in the feature data are ordered in the same way as feature names, thus indexes are not necessary): 
+Given that we only need the feature names, let's create a new variable without the indexes (columns in the feature data are ordered in the same way as feature names, thus indexes are not necessary to join them together): 
 
 ```{r}
 feature_names <- features[, 2]
@@ -147,11 +147,13 @@ train_labels <- read.table("./data/UCI HAR Dataset/train/y_train.txt", stringsAs
 dim(train_labels)
 ```
 
+Later on we will bind feature and label data together in a single data-set.
+
 #### Activity Label Data
 
 ```{r}
 activities <- read.table("./data/UCI HAR Dataset/activity_labels.txt")
-dim(activities)
+activities
 ```
 
 ### Pertinent Variables (Mean, Standard Deviation & Activity)
@@ -162,7 +164,9 @@ Let's create a list of all variables, which include the features names and label
 variables <- c(feature_names, "ActivityID")
 ```
 
-Let's also create a list of the variables we are interested in (means and standard deviations):
+The variable name for activity is my own choice. I believe is descriptive enough.
+
+Let's also create a list of the variables we are interested in exploring (means and standard deviations at the moment):
 
 ```{r}
 mean_variables <- grep("mean\\(\\)", variables, value = TRUE)
@@ -183,6 +187,8 @@ add_labels <- function(data, labels) {
 test_data <- add_labels(test_data, test_labels)
 dim(test_data)
 ```
+
+The resulting data-set has one additional column, as expected.
 
 ### Re-Naming the Data-set Variables
 
@@ -229,7 +235,11 @@ test_data <- normalize_variable_names(test_data)
 sample_data_frame(test_data, 6)
 ```
 
+I could have expanded 't' to something like "TimeDomainSignal" and 'f' to "FrequencyDomainSignal", but I think that's unnecessary and make the variable names too big.
+
 ### Joining with Activity Label Data
+
+Here we join the measurements data with the activity label data by "ActivityID":
 
 ```{r}
 names(activities) <- c("ActivityID", "ActivityLabel")
@@ -245,6 +255,8 @@ add_activity_label_variable <- function(data, activities) {
 test_data <- add_activity_label_variable(test_data, activities)
 sample_data_frame(test_data, 6)
 ```
+
+We also remove "ActivityID", given that "ActivityLabel" is better suited for data exploration.
 
 ### Putting All Transformations Together
 
@@ -358,7 +370,7 @@ The following tables describe all the variables in the clean data-set:
 
 ## Computing Averages per Activity
 
-The following data-set has been grouped by activity and all columns summarised into means:
+The following data-set has been grouped by activity and all columns summarised into their respective means:
 
 ```{r}
 averages_data <- all_data %>% group_by(ActivityLabel) %>% summarise_each(funs(mean))
