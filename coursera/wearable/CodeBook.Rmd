@@ -276,7 +276,7 @@ all_data <- rbind(test_data, train_data)
 dim(all_data)
 ```
 
-Here's a full description of the variables from the clean data-set:
+The following tables describe all the variables on the clean data-set:
 
 |Activity Variable|Description                                                                                                  |
 |-----------------|-------------------------------------------------------------------------------------------------------------|
