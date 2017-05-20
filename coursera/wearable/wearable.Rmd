@@ -5,7 +5,6 @@ output:
     toc: yes
     toc_depth: 4
     variant: markdown_github
-    df_print: "paged"
 ---
 
 # Installing the Required Packages
