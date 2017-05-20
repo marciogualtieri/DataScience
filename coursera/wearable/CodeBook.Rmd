@@ -290,6 +290,8 @@ dim(all_data)
 
 The following tables describe all the variables in the clean data-set:
 
+<br/>
+
 >
 > **Notes: **
 >
@@ -303,6 +305,8 @@ The following tables describe all the variables in the clean data-set:
 >
 > - Prefix 't' stands for "time domain signal", 'f' for "frequency domain signal".
 >
+
+<br/>
 
 |Activity Variable|Description                                                                                                 |
 |-----------------|------------------------------------------------------------------------------------------------------------|
