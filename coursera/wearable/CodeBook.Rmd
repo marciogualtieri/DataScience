@@ -365,7 +365,7 @@ averages_data <- all_data %>% group_by(ActivityLabel) %>% summarise_each(funs(me
 averages_data
 ```
 
-## Saving Clean Data to Disk
+## Saving Resulting Data to Disk
 
 Let's finally save our clean data-sets to `*.csv` files:
 
