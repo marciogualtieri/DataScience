@@ -1,35 +1,55 @@
 -   [Installing the Required Packages](#installing-the-required-packages)
 -   [Importing the Required Packages](#importing-the-required-packages)
--   [Loading Data](#loading-data)
--   [Description of Raw Data](#description-of-raw-data)
--   [Loading Data](#loading-data-1)
+-   [Raw Data](#raw-data)
+    -   [Downloading the Data](#downloading-the-data)
+    -   [Data Files](#data-files)
+    -   [Data Overview](#data-overview)
+-   [Data Cleanup](#data-cleanup)
+    -   [Loading the Raw Data](#loading-the-raw-data)
+        -   [Feature Data](#feature-data)
+        -   [Feature Names](#feature-names)
+        -   [Label Data](#label-data)
+        -   [Activity Label Data](#activity-label-data)
+    -   [Pertinent Variables (Mean, Standard Deviation & Activity)](#pertinent-variables-mean-standard-deviation-activity)
+    -   [Binding Feature and Label Data Together](#binding-feature-and-label-data-together)
+    -   [Re-Naming the Data-set Variables](#re-naming-the-data-set-variables)
+    -   [Filtering Out Non-Pertinent Variables](#filtering-out-non-pertinent-variables)
+    -   [Normalizing Variable Names](#normalizing-variable-names)
+    -   [Joining with Activity Label Data](#joining-with-activity-label-data)
+    -   [Putting All Transformations Together](#putting-all-transformations-together)
+    -   [Resulting Clean Data-set](#resulting-clean-data-set)
+-   [Computing Averages per Activity](#computing-averages-per-activity)
+-   [Saving Clean Data to Disk](#saving-clean-data-to-disk)
 
+<h1>
+Wearable Computing: Human Activity Recognition Using Smartphones
+</h1>
 Installing the Required Packages
-================================
+--------------------------------
 
 You might need to install the following packages if you don't already have them:
 
 ``` r
-install.packages("xtable")
 install.packages("dplyr")
 ```
 
 Just uncomment the packages you need and run this chunk before you run the remaining ones in this notebook.
 
 Importing the Required Packages
-===============================
+-------------------------------
 
 Once the libraries are installed, they need to be loaded as follows:
 
 ``` r
-suppressMessages(library(xtable))  # Pretty printing dataframes
 suppressMessages(library(dplyr))
 ```
 
-Loading Data
-============
+Raw Data
+--------
 
-The data is packaged in a zip file and can be downloaded from the given remove URL:
+### Downloading the Data
+
+The data is packaged in a zip file and can be downloaded from the given [URL](https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip):
 
 ``` r
 download_zipped_data <- function(url, destination) {
@@ -43,10 +63,9 @@ download_zipped_data("https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfil
                      "./data")
 ```
 
-Description of Raw Data
-=======================
+### Data Files
 
-Here are the the unzipped files contained in the data-set package:
+Here's a list of the the unzipped files:
 
 ``` r
 list.files(path = "./data", recursive = TRUE)
@@ -81,39 +100,39 @@ list.files(path = "./data", recursive = TRUE)
     ## [27] "UCI HAR Dataset/train/X_train.txt"                           
     ## [28] "UCI HAR Dataset/train/y_train.txt"
 
-Follows a short description for each one of the available files:
+Follows a short description of its contents:
 
-<table style="width:100%;">
+<table>
 <colgroup>
-<col width="23%" />
-<col width="76%" />
+<col width="21%" />
+<col width="78%" />
 </colgroup>
 <thead>
 <tr class="header">
 <th>File</th>
-<th>Commentary</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td>README.txt</td>
-<td>An overview of the experiment.</td>
+<td>An overview of the experiment performed to collect the data.</td>
 </tr>
 <tr class="even">
 <td>features_info.txt</td>
-<td>A brief description of the measurements contained in the data-set.</td>
+<td>A brief description of the feature variables contained in the data-set.</td>
 </tr>
 <tr class="odd">
 <td>features.txt</td>
-<td>A list of the available variables (measurements) with their respective index numbers.</td>
+<td>A list of the available feature variables with their respective index numbers.</td>
 </tr>
 <tr class="even">
 <td>activity_labels.txt</td>
-<td>A list of activities, i.e., walking, sitting, stading, etc with their respective index numbers.</td>
+<td>A list of activities, i.e., walking, sitting, stading, etc with their respective indexes.</td>
 </tr>
 <tr class="odd">
 <td>train/X_train.txt</td>
-<td>&quot;X&quot; is a matrix with features for training data.</td>
+<td>&quot;X&quot; is a matrix with training feature data.</td>
 </tr>
 <tr class="even">
 <td>train/y_train.txt</td>
@@ -129,7 +148,7 @@ Follows a short description for each one of the available files:
 </tr>
 <tr class="odd">
 <td>test/X_test.txt</td>
-<td>&quot;X&quot; is a matrix with features for test data.</td>
+<td>&quot;X&quot; is a matrix with testing feature data.</td>
 </tr>
 <tr class="even">
 <td>test/y_test.txt</td>
@@ -146,17 +165,69 @@ Follows a short description for each one of the available files:
 </tbody>
 </table>
 
-For the purpose of data exploration, we are not interested in the pre-processed data, thus, we're going to work with the following files:
+> **Note:** The data files have no headers, one record per line and columns are space delimited.
 
--   train/X\_train.txt (training feature data)
--   train/y\_train.txt (training label data)
--   test/X\_test.txt (test feature data)
--   test/y\_test.tx (test label data)
--   features.txt (feature names which map to feature index numbers)
--   activity\_labels.txt (human-readable labels which map to activity index numbers)
+### Data Overview
 
-Loading Data
-============
+The pre-processed data ("Inertial Signals" folders) has been collected from human subjects carrying cellphones equipped with built-in accelerometers and gyroscopes. The purpose of the experiment that collected this data is to use these measurements to classify different categories of human activities performed by human subjects (walking, sitting, standing, etc).
+
+The accelerometers and gyroscopes produce tri-axial measurements (carthesian X, Y & Z components) for the acceleration (in number of g's, where "g" is the Earth's gravitational acceleration, that is, ~ 9.764 m/s2) and angular velocity (in radians per second) respectively.
+
+These measurements are collected overtime at a constant rate of 50 Hz, that is, a measurement is performed every 1/50 seconds (thus, the respective variables prefixed with 't', which stands for "time domain signal").
+
+The acceleration measured has components due to the Earth's gravity and due to the subject's body motion. Given that the Earth's gravity is constant (therefore low frequency), a low-pass filter was used to separate the action due to the Earth's gravity from the action due to body motion. The body variables are infixed with "body", while gravity variables are infixed with "gravity".
+
+A Fast Fourier Transform for the given sampling frequency of 50 Hz and with a number of bins equal to the number of observations was applied to the time based signal variables, generationg the "frequency domain signal" variables (which are prefixed with 'f').
+
+Finally, these measurements were used to estimate variables for mean, standard deviation, median, max, min, etc (you will find the full list of estimated variables in `features_info.txt`). These estimated variables comprise the data for the given training and testing data-sets.
+
+For the purpose of data exploration, we are not interested in the pre-processed data nor the subject id's, thus, we're going to work with the following files:
+
+<table style="width:100%;">
+<colgroup>
+<col width="25%" />
+<col width="74%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Commentary</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>train/X_train.txt</td>
+<td>training feature data.</td>
+</tr>
+<tr class="even">
+<td>train/y_train.txt</td>
+<td>training label data.</td>
+</tr>
+<tr class="odd">
+<td>test/X_test.txt</td>
+<td>test feature data.</td>
+</tr>
+<tr class="even">
+<td>test/y_test.txt</td>
+<td>test label data.</td>
+</tr>
+<tr class="odd">
+<td>features.txt</td>
+<td>feature names which map to feature index numbers.</td>
+</tr>
+<tr class="even">
+<td>activity_labels.txt</td>
+<td>human-readable labels which map to activity index numbers.</td>
+</tr>
+</tbody>
+</table>
+
+Data Cleanup
+------------
+
+### Loading the Raw Data
+
+#### Feature Data
 
 ``` r
 test_data <- read.table("./data/UCI HAR Dataset/test/X_test.txt", stringsAsFactors = FALSE)
@@ -172,6 +243,8 @@ dim(train_data)
 
     ## [1] 7352  561
 
+#### Feature Names
+
 The feature data contains 561 feature variables and 1122 observations (adding up testing and training data-sets).
 
 ``` r
@@ -183,18 +256,22 @@ str(features)
     ##  $ V1: int  1 2 3 4 5 6 7 8 9 10 ...
     ##  $ V2: chr  "tBodyAcc-mean()-X" "tBodyAcc-mean()-Y" "tBodyAcc-mean()-Z" "tBodyAcc-std()-X" ...
 
-As expected, the feature names data contains 2, which matches with the number of columns in the feature data.
+As expected, the list of feature names contains 2 entries, which matches with the number of columns in the feature data.
 
-Note that
+Given that we only need the feature names, let's create a new variable without the indexes (columns in the feature data are ordered in the same way as feature names, thus indexes are not necessary):
 
 ``` r
 feature_names <- features[, 2]
 sample(feature_names, 6)
 ```
 
-    ## [1] "fBodyAcc-bandsEnergy()-1,24" "tBodyAccMag-mad()"          
-    ## [3] "fBodyAccJerk-entropy()-Z"    "tBodyAccJerk-mean()-Y"      
-    ## [5] "tBodyGyroMag-arCoeff()1"     "fBodyAccJerk-mean()-X"
+    ## [1] "tBodyGyroJerk-mean()-X"         "tGravityAcc-arCoeff()-Z,3"     
+    ## [3] "tGravityAcc-min()-X"            "tGravityAcc-arCoeff()-X,4"     
+    ## [5] "fBodyBodyGyroJerkMag-entropy()" "tBodyGyro-arCoeff()-Z,2"
+
+#### Label Data
+
+In the raw data-set the labels are separated in a different file:
 
 ``` r
 test_labels <- read.table("./data/UCI HAR Dataset/test/y_test.txt", stringsAsFactors = FALSE)
@@ -210,32 +287,51 @@ dim(train_labels)
 
     ## [1] 7352    1
 
+#### Activity Label Data
+
+``` r
+activities <- read.table("./data/UCI HAR Dataset/activity_labels.txt")
+dim(activities)
+```
+
+    ## [1] 6 2
+
+### Pertinent Variables (Mean, Standard Deviation & Activity)
+
+Let's create a list of all variables, which include the features names and label name:
+
 ``` r
 variables <- c(feature_names, "ActivityID")
+```
+
+Let's also create a list of the variables we are interested in (means and standard deviations):
+
+``` r
 mean_variables <- grep("mean\\(\\)", variables, value = TRUE)
 std_variables <- grep("std\\(\\)", variables, value = TRUE)
 sample(variables, 6)
 ```
 
-    ## [1] "fBodyAcc-bandsEnergy()-1,8"    "tBodyAcc-max()-X"             
-    ## [3] "fBodyGyro-bandsEnergy()-49,56" "fBodyGyro-bandsEnergy()-17,24"
-    ## [5] "fBodyAcc-bandsEnergy()-41,48"  "fBodyAccMag-sma()"
+    ## [1] "tGravityAcc-iqr()-X"          "fBodyBodyGyroJerkMag-maxInds"
+    ## [3] "tGravityAcc-arCoeff()-X,3"    "fBodyBodyAccJerkMag-energy()"
+    ## [5] "tBodyAccJerk-iqr()-X"         "tBodyGyro-std()-X"
 
 ``` r
 sample(mean_variables, 6)
 ```
 
-    ## [1] "tBodyAcc-mean()-Y"       "tBodyGyroMag-mean()"    
-    ## [3] "tBodyGyro-mean()-X"      "fBodyBodyGyroMag-mean()"
-    ## [5] "fBodyAcc-mean()-X"       "fBodyAccJerk-mean()-Y"
+    ## [1] "tBodyGyroJerkMag-mean()" "tBodyGyro-mean()-X"     
+    ## [3] "fBodyAccJerk-mean()-Z"   "fBodyAcc-mean()-X"      
+    ## [5] "fBodyAccMag-mean()"      "tBodyAccJerk-mean()-X"
 
 ``` r
 sample(std_variables, 6)
 ```
 
-    ## [1] "tBodyAcc-std()-X"           "tBodyGyro-std()-Z"         
-    ## [3] "tBodyGyro-std()-Y"          "fBodyAccJerk-std()-X"      
-    ## [5] "tBodyAccJerkMag-std()"      "fBodyBodyGyroJerkMag-std()"
+    ## [1] "tGravityAcc-std()-X"   "fBodyGyro-std()-Z"     "tBodyGyroJerk-std()-X"
+    ## [4] "tBodyAcc-std()-Y"      "tBodyGyro-std()-Y"     "tBodyAccJerk-std()-X"
+
+### Binding Feature and Label Data Together
 
 ``` r
 add_labels <- function(data, labels) {
@@ -249,6 +345,8 @@ dim(test_data)
 
     ## [1] 2947  562
 
+### Re-Naming the Data-set Variables
+
 ``` r
 add_variable_names <- function(data) {
   names(data) <- variables
@@ -259,9 +357,11 @@ test_data <- add_variable_names(test_data)
 sample(names(test_data), 6)
 ```
 
-    ## [1] "fBodyGyro-std()-Z"           "tBodyGyro-correlation()-X,Y"
-    ## [3] "fBodyAcc-kurtosis()-Z"       "fBodyBodyAccJerkMag-mad()"  
-    ## [5] "tBodyGyro-arCoeff()-X,3"     "tBodyAcc-min()-Y"
+    ## [1] "fBodyAcc-max()-Z"          "tBodyGyroJerkMag-sma()"   
+    ## [3] "tGravityAccMag-arCoeff()1" "tBodyAccJerk-std()-Y"     
+    ## [5] "tGravityAcc-energy()-X"    "fBodyAcc-max()-Y"
+
+### Filtering Out Non-Pertinent Variables
 
 ``` r
 select_mean_and_std_variables <- function(data)
@@ -307,6 +407,8 @@ names(test_data)
     ## [65] "fBodyBodyGyroMag-std()"      "fBodyBodyGyroJerkMag-std()" 
     ## [67] "ActivityID"
 
+### Normalizing Variable Names
+
 ``` r
 normalize_variable_names <- function(data) {
   names(data) <- make.names(names(data))
@@ -329,19 +431,14 @@ sample_data_frame(test_data, 6)
 
 |      |  tBodyAccelerationMeanX|  tBodyAccelerationMeanY|  tBodyAccelerationMeanZ|  tGravityAccelerationMeanX|  tGravityAccelerationMeanY|  tGravityAccelerationMeanZ|  tBodyAccelerationJerkMeanX|  tBodyAccelerationJerkMeanY|  tBodyAccelerationJerkMeanZ|  tBodyGyroMeanX|  tBodyGyroMeanY|  tBodyGyroMeanZ|  tBodyGyroJerkMeanX|  tBodyGyroJerkMeanY|  tBodyGyroJerkMeanZ|  tBodyAccelerationMagnitudeMean|  tGravityAccelerationMagnitudeMean|  tBodyAccelerationJerkMagnitudeMean|  tBodyGyroMagnitudeMean|  tBodyGyroJerkMagnitudeMean|  fBodyAccelerationMeanX|  fBodyAccelerationMeanY|  fBodyAccelerationMeanZ|  fBodyAccelerationJerkMeanX|  fBodyAccelerationJerkMeanY|  fBodyAccelerationJerkMeanZ|  fBodyGyroMeanX|  fBodyGyroMeanY|  fBodyGyroMeanZ|  fBodyAccelerationMagnitudeMean|  fBodyBodyAccelerationJerkMagnitudeMean|  fBodyBodyGyroMagnitudeMean|  fBodyBodyGyroJerkMagnitudeMean|  tBodyAccelerationSigmaX|  tBodyAccelerationSigmaY|  tBodyAccelerationSigmaZ|  tGravityAccelerationSigmaX|  tGravityAccelerationSigmaY|  tGravityAccelerationSigmaZ|  tBodyAccelerationJerkSigmaX|  tBodyAccelerationJerkSigmaY|  tBodyAccelerationJerkSigmaZ|  tBodyGyroSigmaX|  tBodyGyroSigmaY|  tBodyGyroSigmaZ|  tBodyGyroJerkSigmaX|  tBodyGyroJerkSigmaY|  tBodyGyroJerkSigmaZ|  tBodyAccelerationMagnitudeSigma|  tGravityAccelerationMagnitudeSigma|  tBodyAccelerationJerkMagnitudeSigma|  tBodyGyroMagnitudeSigma|  tBodyGyroJerkMagnitudeSigma|  fBodyAccelerationSigmaX|  fBodyAccelerationSigmaY|  fBodyAccelerationSigmaZ|  fBodyAccelerationJerkSigmaX|  fBodyAccelerationJerkSigmaY|  fBodyAccelerationJerkSigmaZ|  fBodyGyroSigmaX|  fBodyGyroSigmaY|  fBodyGyroSigmaZ|  fBodyAccelerationMagnitudeSigma|  fBodyBodyAccelerationJerkMagnitudeSigma|  fBodyBodyGyroMagnitudeSigma|  fBodyBodyGyroJerkMagnitudeSigma|  ActivityID|
 |------|-----------------------:|-----------------------:|-----------------------:|--------------------------:|--------------------------:|--------------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------:|-------------------:|-------------------:|-------------------------------:|----------------------------------:|-----------------------------------:|-----------------------:|---------------------------:|-----------------------:|-----------------------:|-----------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------------------:|---------------------------------------:|---------------------------:|-------------------------------:|------------------------:|------------------------:|------------------------:|---------------------------:|---------------------------:|---------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------:|--------------------:|--------------------:|--------------------------------:|-----------------------------------:|------------------------------------:|------------------------:|----------------------------:|------------------------:|------------------------:|------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------------------:|----------------------------------------:|----------------------------:|--------------------------------:|-----------:|
-| 995  |               0.3477308|              -0.0321568|              -0.0988225|                  0.9604000|                 -0.2154150|                  0.0434083|                  -0.2474108|                  -0.0651314|                  -0.0914600|       0.0558847|      -0.0409960|       0.0745144|           0.0679639|          -0.1885751|           0.0764621|                      -0.1090735|                         -0.1090735|                          -0.0463759|              -0.1528897|                  -0.4035593|              -0.1259728|               0.1410536|              -0.3799354|                  -0.1805646|                   0.2908899|                  -0.4893853|      -0.2484200|      -0.2638722|      -0.0432116|                       0.0357455|                               0.0725064|                  -0.3822866|                      -0.4295545|               -0.1561742|                0.0430341|               -0.3576778|                  -0.9922398|                  -0.9590523|                  -0.9648575|                   -0.0502975|                    0.3810028|                   -0.5286914|       -0.3682129|       -0.2837252|       -0.1331690|           -0.3640948|           -0.4358266|           -0.2578421|                       -0.1150333|                          -0.1150333|                            0.1168669|               -0.3776903|                   -0.4063870|               -0.1683237|               -0.0803565|               -0.3962072|                   -0.0038392|                    0.3887325|                   -0.5656014|       -0.4069316|       -0.3013325|       -0.2440208|                       -0.3507907|                                0.1628252|                   -0.4827493|                       -0.4147250|           1|
-| 27   |               0.2764271|              -0.0262776|              -0.1269413|                  0.8865360|                 -0.4173922|                  0.0653486|                   0.0745093|                   0.0177029|                   0.0349012|      -0.0249820|      -0.0702652|       0.0928645|          -0.1008578|          -0.0402331|          -0.0709650|                      -0.9741019|                         -0.9741019|                          -0.9892921|              -0.9791362|                  -0.9924207|              -0.9928278|              -0.9725783|              -0.9741882|                  -0.9921867|                  -0.9820810|                  -0.9890226|      -0.9829260|      -0.9866335|      -0.9738634|                      -0.9785476|                              -0.9923149|                  -0.9873502|                      -0.9936636|               -0.9929888|               -0.9656195|               -0.9657378|                  -0.9949715|                  -0.9721748|                  -0.9531763|                   -0.9912279|                   -0.9833434|                   -0.9906548|       -0.9847049|       -0.9844418|       -0.9705104|           -0.9887654|           -0.9929821|           -0.9917164|                       -0.9736912|                          -0.9736912|                           -0.9931691|               -0.9833563|                   -0.9934345|               -0.9929307|               -0.9633092|               -0.9627117|                   -0.9908626|                   -0.9863528|                   -0.9908127|       -0.9852218|       -0.9831744|       -0.9719235|                       -0.9738442|                               -0.9931633|                   -0.9832974|                       -0.9931561|           5|
-| 2934 |               0.3639427|              -0.0222116|              -0.1254371|                  0.9504010|                 -0.1576973|                 -0.1403994|                  -0.0567817|                   0.0375420|                   0.1945675|       0.0040686|      -0.0719858|       0.1201224|           0.0139851|           0.0559584|          -0.0221690|                      -0.0457076|                         -0.0457076|                          -0.2079415|              -0.2784204|                  -0.4732061|              -0.1756810|               0.0552644|              -0.2134172|                  -0.3108674|                  -0.0925127|                  -0.2876629|      -0.2191714|      -0.3888065|      -0.4157321|                       0.0066451|                              -0.1685607|                  -0.4165861|                      -0.5112199|               -0.0411798|                0.0207773|               -0.2436069|                  -0.9627234|                  -0.9168374|                  -0.9567510|                   -0.2799249|                   -0.0396514|                   -0.3359741|       -0.3457921|       -0.4280003|       -0.4961268|           -0.3246380|           -0.5241588|           -0.4739263|                        0.0664916|                           0.0664916|                           -0.1306854|               -0.4525816|                   -0.4935708|                0.0069668|               -0.0630306|               -0.3245885|                   -0.3110951|                   -0.0453178|                   -0.3812531|       -0.3866423|       -0.4576796|       -0.5715282|                       -0.0672801|                               -0.0877614|                   -0.5792945|                       -0.5058002|           3|
-| 1626 |               0.2419846|              -0.0154896|              -0.1170145|                  0.8847073|                 -0.2748836|                 -0.3029066|                   0.1835046|                   0.2003659|                   0.6535237|       0.0206650|      -0.0997877|       0.0923479|           0.0039122|           0.1184852|           0.1122401|                      -0.1852348|                         -0.1852348|                          -0.1500447|              -0.2812696|                  -0.2578726|              -0.3121608|               0.0686811|              -0.0155610|                  -0.3209301|                  -0.0959327|                  -0.2334631|      -0.3187549|      -0.1795368|      -0.2597079|                      -0.1765541|                              -0.1383144|                  -0.2675273|                      -0.2733900|               -0.4069702|                0.0234448|               -0.0810838|                  -0.9850580|                  -0.9668592|                  -0.9547076|                   -0.2692867|                   -0.0164082|                   -0.2756266|       -0.5305831|       -0.2419032|       -0.3620444|           -0.3093136|           -0.2088671|           -0.4169616|                       -0.2985980|                          -0.2985980|                           -0.1608143|               -0.3667993|                   -0.2873322|               -0.4487366|               -0.0667378|               -0.1993065|                   -0.2797272|                    0.0060313|                   -0.3144656|       -0.6007616|       -0.2885320|       -0.4577406|                       -0.4871752|                               -0.1948459|                   -0.5717123|                       -0.3497062|           1|
-| 2101 |               0.2946739|              -0.0169586|              -0.1082850|                 -0.2572891|                  0.5254626|                  0.8566554|                   0.0769352|                   0.0104123|                   0.0007272|      -0.0323102|      -0.0577079|       0.0564615|          -0.1019405|          -0.0308418|          -0.0600853|                      -0.9851128|                         -0.9851128|                          -0.9872561|              -0.9764584|                  -0.9884220|              -0.9837545|              -0.9828236|              -0.9876358|                  -0.9836427|                  -0.9816493|                  -0.9891956|      -0.9879263|      -0.9703007|      -0.9906654|                      -0.9850865|                              -0.9854445|                  -0.9745762|                      -0.9842062|               -0.9844229|               -0.9857020|               -0.9837898|                  -0.9843236|                  -0.9965609|                  -0.9926458|                   -0.9844251|                   -0.9816712|                   -0.9907116|       -0.9902823|       -0.9697988|       -0.9920429|           -0.9921070|           -0.9830252|           -0.9929790|                       -0.9860643|                          -0.9860643|                           -0.9870289|               -0.9710986|                   -0.9843006|               -0.9845584|               -0.9872468|               -0.9817922|                   -0.9868331|                   -0.9830091|                   -0.9907289|       -0.9909619|       -0.9696014|       -0.9932261|                       -0.9878793|                               -0.9882320|                   -0.9734065|                       -0.9851394|           6|
-| 2058 |               0.2752860|              -0.0163351|              -0.1161343|                  0.9199891|                 -0.2385235|                 -0.2209499|                   0.0748456|                   0.0022984|                  -0.0157064|      -0.0267571|      -0.0978637|       0.1063581|          -0.0959675|          -0.0406770|          -0.0555849|                      -0.9908148|                         -0.9908148|                          -0.9904446|              -0.9808842|                  -0.9937371|              -0.9925459|              -0.9861866|              -0.9821643|                  -0.9915270|                  -0.9900018|                  -0.9861244|      -0.9869785|      -0.9869840|      -0.9863852|                      -0.9888381|                              -0.9901968|                  -0.9847894|                      -0.9932993|               -0.9940016|               -0.9877139|               -0.9837495|                  -0.9945272|                  -0.9916822|                  -0.9897166|                   -0.9914754|                   -0.9898638|                   -0.9881826|       -0.9843179|       -0.9851460|       -0.9863415|           -0.9935144|           -0.9928915|           -0.9913533|                       -0.9900741|                          -0.9900741|                           -0.9919665|               -0.9789881|                   -0.9937284|               -0.9946625|               -0.9882651|               -0.9852684|                   -0.9921632|                   -0.9903858|                   -0.9887948|       -0.9837436|       -0.9840660|       -0.9874176|                       -0.9915843|                               -0.9936347|                   -0.9785946|                       -0.9944635|           5|
+| 364  |               0.2764281|              -0.0166219|              -0.1091813|                 -0.4358038|                  0.8748380|                  0.4645182|                   0.0717087|                   0.0035040|                   0.0080267|      -0.0285126|      -0.0681482|       0.0835327|          -0.0978523|          -0.0430676|          -0.0506685|                      -0.9890297|                         -0.9890297|                          -0.9904445|              -0.9793959|                  -0.9959243|              -0.9921443|              -0.9843748|              -0.9878957|                  -0.9944484|                  -0.9826906|                  -0.9897249|      -0.9921258|      -0.9855868|      -0.9957620|                      -0.9905412|                              -0.9923977|                  -0.9876293|                      -0.9960011|               -0.9884484|               -0.9880544|               -0.9834039|                  -0.9928084|                  -0.9981123|                  -0.9930036|                   -0.9940157|                   -0.9824252|                   -0.9911925|       -0.9909995|       -0.9703497|       -0.9968163|           -0.9950187|           -0.9946235|           -0.9970939|                       -0.9905337|                          -0.9905337|                           -0.9931286|               -0.9810877|                   -0.9963409|               -0.9868565|               -0.9900383|               -0.9810794|                   -0.9939990|                   -0.9833220|                   -0.9911654|       -0.9906846|       -0.9637732|       -0.9975379|                       -0.9910036|                               -0.9929638|                   -0.9800080|                       -0.9967997|           6|
+| 1440 |               0.3101509|              -0.0193809|              -0.1245277|                 -0.3898287|                  0.9654301|                 -0.2017490|                   0.0867090|                  -0.0088666|                   0.0092497|      -0.0117866|      -0.0723190|       0.1879241|          -0.1250290|          -0.0475644|          -0.1026299|                      -0.9634195|                         -0.9634195|                          -0.9609237|              -0.9353714|                  -0.9657130|              -0.9657583|              -0.9498915|              -0.9630029|                  -0.9603088|                  -0.9452981|                  -0.9594244|      -0.9532447|      -0.9512470|      -0.9122810|                      -0.9623935|                              -0.9554944|                  -0.9363539|                      -0.9613492|               -0.9732241|               -0.9590301|               -0.9663660|                  -0.9779661|                  -0.9923420|                  -0.9824149|                   -0.9631093|                   -0.9483421|                   -0.9655114|       -0.9681313|       -0.9570005|       -0.9116424|           -0.9706306|           -0.9600218|           -0.9687916|                       -0.9697854|                          -0.9697854|                           -0.9563445|               -0.9207041|                   -0.9625867|               -0.9767947|               -0.9663430|               -0.9705317|                   -0.9701376|                   -0.9563605|                   -0.9704470|       -0.9730687|       -0.9612286|       -0.9193194|                       -0.9789725|                               -0.9561746|                   -0.9238086|                       -0.9660458|           6|
+| 2049 |               0.2754460|              -0.0213429|              -0.1085156|                  0.9391022|                 -0.2100177|                 -0.1791656|                   0.0703805|                   0.0249381|                   0.0076044|      -0.0150660|      -0.0759667|       0.0832001|          -0.1044768|          -0.0372731|          -0.0528742|                      -0.9810894|                         -0.9810894|                          -0.9908625|              -0.9767862|                  -0.9925176|              -0.9916793|              -0.9794653|              -0.9831750|                  -0.9900563|                  -0.9858675|                  -0.9913183|      -0.9862426|      -0.9827400|      -0.9852292|                      -0.9858211|                              -0.9922533|                  -0.9848462|                      -0.9937427|               -0.9922899|               -0.9745036|               -0.9642744|                  -0.9948355|                  -0.9840307|                  -0.9772819|                   -0.9903874|                   -0.9857081|                   -0.9927639|       -0.9851623|       -0.9766278|       -0.9842859|           -0.9928134|           -0.9919053|           -0.9914776|                       -0.9796041|                          -0.9796041|                           -0.9934412|               -0.9792299|                   -0.9943319|               -0.9924500|               -0.9725538|               -0.9568832|                   -0.9916683|                   -0.9865091|                   -0.9927476|       -0.9849292|       -0.9734628|       -0.9852236|                       -0.9781575|                               -0.9937010|                   -0.9789000|                       -0.9953403|           5|
+| 1051 |               0.3686838|               0.0042524|              -0.1574773|                  0.9278786|                 -0.2780127|                  0.0286913|                   0.3251510|                  -0.2523396|                  -0.0111135|       0.0498686|      -0.1962954|       0.0993927|          -0.2491385|           0.0234477|          -0.0737290|                      -0.1082864|                         -0.1082864|                          -0.3475623|              -0.0786705|                  -0.5718183|              -0.1499970|              -0.0157387|              -0.5077995|                  -0.2482967|                  -0.2108307|                  -0.6890252|      -0.2474457|      -0.3771794|      -0.1996146|                      -0.2347854|                              -0.1871636|                  -0.3071777|                      -0.6842392|               -0.2238081|                0.0380033|               -0.2799751|                  -0.9761235|                  -0.9667923|                  -0.9113891|                   -0.2695742|                   -0.1655233|                   -0.7255495|       -0.3589787|       -0.0740186|       -0.1396246|           -0.4728352|           -0.6897266|           -0.5023472|                       -0.2609545|                          -0.2609545|                           -0.2501294|               -0.1695747|                   -0.7229947|               -0.2548199|                0.0004185|               -0.2271923|                   -0.3627849|                   -0.1711569|                   -0.7615217|       -0.3953751|        0.0649159|       -0.1994344|                       -0.3907228|                               -0.3436118|                   -0.2210664|                       -0.8015481|           2|
+| 414  |               0.2840204|              -0.0157178|              -0.0873318|                  0.9584667|                 -0.1152078|                  0.1313813|                   0.0519019|                   0.2337285|                  -0.1435989|       0.0157220|      -0.1106603|       0.0663449|          -0.1002906|          -0.1094106|          -0.0571980|                      -0.3321678|                         -0.3321678|                          -0.3972728|              -0.5544935|                  -0.6920850|              -0.4331622|              -0.2172194|              -0.5825495|                  -0.3382736|                  -0.3030135|                  -0.7041658|      -0.4733357|      -0.6814635|      -0.5566647|                      -0.5036298|                              -0.2927297|                  -0.6704985|                      -0.7326364|               -0.4573512|               -0.1524857|               -0.5439532|                  -0.9845208|                  -0.9836388|                  -0.9881282|                   -0.3235516|                   -0.2989389|                   -0.7165567|       -0.5869800|       -0.6604946|       -0.6440863|           -0.5273815|           -0.8051928|           -0.6267160|                       -0.5830618|                          -0.5830618|                           -0.3541700|               -0.6205917|                   -0.7365315|               -0.4671034|               -0.1726862|               -0.5580076|                   -0.3686687|                   -0.3447509|                   -0.7266700|       -0.6230229|       -0.6504606|       -0.7105344|                       -0.7001741|                               -0.4429774|                   -0.6516980|                       -0.7604300|           1|
+| 2676 |               0.2736793|              -0.0226344|              -0.1015416|                  0.9669988|                 -0.1011350|                 -0.1246482|                   0.1147401|                  -0.0137722|                   0.0424547|      -0.0395180|      -0.0769023|       0.1098940|          -0.0754520|          -0.0840171|          -0.1009850|                      -0.3234178|                         -0.3234178|                          -0.4149264|              -0.4401830|                  -0.5651959|              -0.5676400|              -0.2976396|              -0.3774359|                  -0.5500562|                  -0.4524386|                  -0.4694687|      -0.5628251|      -0.5076829|      -0.4798338|                      -0.4587416|                              -0.4294931|                  -0.6162855|                      -0.6327846|               -0.4866976|               -0.1694495|               -0.2890834|                  -0.9873698|                  -0.9686669|                  -0.9769189|                   -0.4860632|                   -0.3842211|                   -0.4467971|       -0.6102974|       -0.4998604|       -0.4420611|           -0.6412348|           -0.5333435|           -0.6312834|                       -0.4535165|                          -0.4535165|                           -0.3960820|               -0.6303322|                   -0.5937596|               -0.4579031|               -0.1598568|               -0.2968077|                   -0.4666296|                   -0.3507405|                   -0.4258689|       -0.6267750|       -0.4985764|       -0.4810907|                       -0.5349736|                               -0.3593644|                   -0.7068136|                       -0.5712634|           1|
 
-``` r
-activities <- read.table("./data/UCI HAR Dataset/activity_labels.txt")
-dim(activities)
-```
-
-    ## [1] 6 2
+### Joining with Activity Label Data
 
 ``` r
 names(activities) <- c("ActivityID", "ActivityLabel")
@@ -365,12 +462,16 @@ sample_data_frame(test_data, 6)
 
 |      |  tBodyAccelerationMeanX|  tBodyAccelerationMeanY|  tBodyAccelerationMeanZ|  tGravityAccelerationMeanX|  tGravityAccelerationMeanY|  tGravityAccelerationMeanZ|  tBodyAccelerationJerkMeanX|  tBodyAccelerationJerkMeanY|  tBodyAccelerationJerkMeanZ|  tBodyGyroMeanX|  tBodyGyroMeanY|  tBodyGyroMeanZ|  tBodyGyroJerkMeanX|  tBodyGyroJerkMeanY|  tBodyGyroJerkMeanZ|  tBodyAccelerationMagnitudeMean|  tGravityAccelerationMagnitudeMean|  tBodyAccelerationJerkMagnitudeMean|  tBodyGyroMagnitudeMean|  tBodyGyroJerkMagnitudeMean|  fBodyAccelerationMeanX|  fBodyAccelerationMeanY|  fBodyAccelerationMeanZ|  fBodyAccelerationJerkMeanX|  fBodyAccelerationJerkMeanY|  fBodyAccelerationJerkMeanZ|  fBodyGyroMeanX|  fBodyGyroMeanY|  fBodyGyroMeanZ|  fBodyAccelerationMagnitudeMean|  fBodyBodyAccelerationJerkMagnitudeMean|  fBodyBodyGyroMagnitudeMean|  fBodyBodyGyroJerkMagnitudeMean|  tBodyAccelerationSigmaX|  tBodyAccelerationSigmaY|  tBodyAccelerationSigmaZ|  tGravityAccelerationSigmaX|  tGravityAccelerationSigmaY|  tGravityAccelerationSigmaZ|  tBodyAccelerationJerkSigmaX|  tBodyAccelerationJerkSigmaY|  tBodyAccelerationJerkSigmaZ|  tBodyGyroSigmaX|  tBodyGyroSigmaY|  tBodyGyroSigmaZ|  tBodyGyroJerkSigmaX|  tBodyGyroJerkSigmaY|  tBodyGyroJerkSigmaZ|  tBodyAccelerationMagnitudeSigma|  tGravityAccelerationMagnitudeSigma|  tBodyAccelerationJerkMagnitudeSigma|  tBodyGyroMagnitudeSigma|  tBodyGyroJerkMagnitudeSigma|  fBodyAccelerationSigmaX|  fBodyAccelerationSigmaY|  fBodyAccelerationSigmaZ|  fBodyAccelerationJerkSigmaX|  fBodyAccelerationJerkSigmaY|  fBodyAccelerationJerkSigmaZ|  fBodyGyroSigmaX|  fBodyGyroSigmaY|  fBodyGyroSigmaZ|  fBodyAccelerationMagnitudeSigma|  fBodyBodyAccelerationJerkMagnitudeSigma|  fBodyBodyGyroMagnitudeSigma|  fBodyBodyGyroJerkMagnitudeSigma| ActivityLabel     |
 |------|-----------------------:|-----------------------:|-----------------------:|--------------------------:|--------------------------:|--------------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------:|-------------------:|-------------------:|-------------------------------:|----------------------------------:|-----------------------------------:|-----------------------:|---------------------------:|-----------------------:|-----------------------:|-----------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------------------:|---------------------------------------:|---------------------------:|-------------------------------:|------------------------:|------------------------:|------------------------:|---------------------------:|---------------------------:|---------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------:|--------------------:|--------------------:|--------------------------------:|-----------------------------------:|------------------------------------:|------------------------:|----------------------------:|------------------------:|------------------------:|------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------------------:|----------------------------------------:|----------------------------:|--------------------------------:|:------------------|
-| 2389 |               0.2742421|              -0.0208368|              -0.1143246|                  0.8680810|                 -0.4366017|                  0.0086679|                   0.0702023|                   0.0033228|                  -0.0071392|      -0.0276043|      -0.0814551|       0.0927917|          -0.0962583|          -0.0487295|          -0.0429617|                      -0.9801131|                         -0.9801131|                          -0.9897595|              -0.9781680|                  -0.9893675|              -0.9886189|              -0.9645052|              -0.9869769|                  -0.9916951|                  -0.9801813|                  -0.9921010|      -0.9852214|      -0.9831762|      -0.9675392|                      -0.9801046|                              -0.9917446|                  -0.9824575|                      -0.9906559|               -0.9881518|               -0.9530545|               -0.9846554|                  -0.9928469|                  -0.9864340|                  -0.9974038|                   -0.9923013|                   -0.9794158|                   -0.9934082|       -0.9844357|       -0.9826207|       -0.9671720|           -0.9903727|           -0.9909787|           -0.9804348|                       -0.9749408|                          -0.9749408|                           -0.9929985|               -0.9789580|                   -0.9907377|               -0.9877865|               -0.9495634|               -0.9834764|                   -0.9938018|                   -0.9798870|                   -0.9932399|       -0.9842818|       -0.9822983|       -0.9698686|                       -0.9747383|                               -0.9938391|                   -0.9799214|                       -0.9910283| STANDING          |
-| 930  |               0.2597209|              -0.0307859|              -0.0957118|                  0.9113144|                 -0.2486901|                 -0.2035981|                  -0.0364701|                   0.0780877|                   0.0215808|       0.3766401|      -0.2034266|      -0.1591657|          -0.1763419|          -0.0724647|          -0.0998459|                      -0.2350268|                         -0.2350268|                          -0.4491687|              -0.3110713|                  -0.6581411|              -0.4396825|              -0.3551622|              -0.3172861|                  -0.4778940|                  -0.5407783|                  -0.4411556|      -0.5987620|      -0.5532965|      -0.4284260|                      -0.2974015|                              -0.3853432|                  -0.5761303|                      -0.6647682|               -0.3111553|               -0.1923093|               -0.2536017|                  -0.9372263|                  -0.9389076|                  -0.9603201|                   -0.4274396|                   -0.5222025|                   -0.4923429|       -0.6923404|       -0.5410017|       -0.2503330|           -0.6715382|           -0.6431590|           -0.6261313|                       -0.2724120|                          -0.2724120|                           -0.3877668|               -0.5090685|                   -0.6430162|               -0.2664882|               -0.1672344|               -0.2771072|                   -0.4255887|                   -0.5339758|                   -0.5417282|       -0.7220654|       -0.5367530|       -0.2690110|                       -0.3715199|                               -0.3944936|                   -0.5479600|                       -0.6404467| WALKING\_UPSTAIRS |
-| 1623 |               0.2891046|              -0.0329174|              -0.1694339|                  0.9690898|                  0.0073858|                  0.0893695|                   0.0702542|                   0.0627107|                   0.0026604|      -0.0165374|      -0.1093818|       0.0725889|          -0.1086104|          -0.0080123|          -0.0852035|                      -0.8619990|                         -0.8619990|                          -0.9396442|              -0.9019361|                  -0.9504674|              -0.9569706|              -0.8281169|              -0.9111136|                  -0.9481951|                  -0.9102760|                  -0.9373127|      -0.9201675|      -0.9149504|      -0.8950961|                      -0.8961784|                              -0.9265175|                  -0.9179388|                      -0.9478525|               -0.9679189|               -0.7559846|               -0.8718871|                  -0.9856184|                  -0.9139088|                  -0.8901827|                   -0.9487182|                   -0.9067158|                   -0.9476982|       -0.9392002|       -0.9104681|       -0.8626078|           -0.9339671|           -0.9505734|           -0.9516580|                       -0.8837821|                          -0.8837821|                           -0.9236137|               -0.8965707|                   -0.9447526|               -0.9734372|               -0.7389604|               -0.8614028|                   -0.9540303|                   -0.9090071|                   -0.9575098|       -0.9452066|       -0.9083216|       -0.8657284|                       -0.8940740|                               -0.9187214|                   -0.9002366|                       -0.9436450| SITTING           |
-| 722  |               0.2328520|              -0.0623503|              -0.0873655|                  0.9460243|                 -0.1446752|                 -0.1635630|                   0.4746062|                  -0.0768440|                   0.0825955|       0.1401820|      -0.1178494|       0.1187403|          -0.1865796|          -0.1500583|          -0.1804185|                      -0.2734519|                         -0.2734519|                          -0.4182831|              -0.2561268|                  -0.6927811|              -0.3317780|              -0.3070249|              -0.4380557|                  -0.3873078|                  -0.5272343|                  -0.5835759|      -0.5207834|      -0.5538814|      -0.2823394|                      -0.3870343|                              -0.3688552|                  -0.6088980|                      -0.7672156|               -0.4115131|               -0.0986026|               -0.3678628|                  -0.9835868|                  -0.9180538|                  -0.9456824|                   -0.3346374|                   -0.4645286|                   -0.6200482|       -0.5642194|       -0.5031809|        0.0594918|           -0.6850120|           -0.7339990|           -0.6479069|                       -0.4209108|                          -0.4209108|                           -0.3886576|               -0.5392880|                   -0.7715373|               -0.4459649|               -0.0604634|               -0.3789064|                   -0.3384256|                   -0.4319442|                   -0.6546023|       -0.5801013|       -0.4776899|        0.0526190|                       -0.5305258|                               -0.4183872|                   -0.5717018|                       -0.7935254| WALKING\_UPSTAIRS |
-| 1992 |               0.2754349|              -0.0069992|              -0.1071885|                  0.9619580|                 -0.0730965|                  0.1561396|                   0.0798978|                   0.0002464|                  -0.0218310|      -0.0462196|      -0.0846391|       0.0820495|          -0.1027327|          -0.0482806|          -0.0408766|                      -0.9449364|                         -0.9449364|                          -0.9388186|              -0.9411754|                  -0.9635750|              -0.9763926|              -0.9100159|              -0.9420601|                  -0.9668051|                  -0.9143366|                  -0.9516816|      -0.9250678|      -0.9688447|      -0.9475063|                      -0.9428944|                              -0.9485063|                  -0.9505736|                      -0.9659129|               -0.9801120|               -0.9085073|               -0.9301060|                  -0.9951674|                  -0.9707729|                  -0.9582629|                   -0.9565101|                   -0.9141581|                   -0.9542003|       -0.9427802|       -0.9659750|       -0.9478754|           -0.9337277|           -0.9795548|           -0.9689820|                       -0.9552907|                          -0.9552907|                           -0.9531558|               -0.9490783|                   -0.9695543|               -0.9817314|               -0.9124454|               -0.9280084|                   -0.9503700|                   -0.9201430|                   -0.9549703|       -0.9483626|       -0.9644189|       -0.9525865|                       -0.9705221|                               -0.9587181|                   -0.9566681|                       -0.9771200| STANDING          |
-| 506  |               0.1314322|              -0.0396629|              -0.0709345|                  0.8718341|                 -0.4241977|                 -0.0195661|                   0.1528750|                   0.4735616|                   0.1283803|      -0.2466755|       0.1043933|      -0.0547808|           0.0067632|          -0.2391913|           0.1704051|                      -0.0665658|                         -0.0665658|                          -0.3916244|              -0.3005401|                  -0.6446515|              -0.3423814|               0.1239052|              -0.5074469|                  -0.4560922|                  -0.2710502|                  -0.6787704|      -0.4224801|      -0.5463286|      -0.2716252|                      -0.3417846|                              -0.4374758|                  -0.4675667|                      -0.7287898|               -0.2555179|                0.2917633|               -0.3922628|                  -0.8792463|                  -0.8512166|                  -0.9708129|                   -0.4479448|                   -0.1795288|                   -0.7216710|       -0.4742534|       -0.4287947|       -0.3354789|           -0.5975719|           -0.7623217|           -0.4443353|                       -0.2856202|                          -0.2856202|                           -0.4670457|               -0.3955611|                   -0.7331190|               -0.2238394|                0.2923396|               -0.3793975|                   -0.4891692|                   -0.1343854|                   -0.7651640|       -0.4932779|       -0.3708362|       -0.4184993|                       -0.3666308|                               -0.5096860|                   -0.4502330|                       -0.7577683| WALKING\_UPSTAIRS |
+| 882  |               0.2708122|              -0.0357390|              -0.0770988|                  0.9399274|                 -0.2691961|                  0.0139472|                  -0.1513061|                   0.0071824|                  -0.1344923|       0.2673928|      -0.2949259|       0.1435523|          -0.1858254|          -0.0208436|          -0.3783820|                      -0.0597472|                         -0.0597472|                          -0.3210986|               0.1230732|                  -0.5036327|              -0.1793944|              -0.0429947|              -0.4130055|                  -0.2566368|                  -0.2643506|                  -0.6224381|      -0.1295500|      -0.3048524|      -0.1132805|                      -0.1470443|                              -0.1385232|                  -0.1654658|                      -0.6187392|               -0.1981690|                0.0731391|               -0.1526957|                  -0.9652525|                  -0.9534068|                  -0.9094823|                   -0.2259274|                   -0.1893630|                   -0.6655988|       -0.1323277|        0.0269617|       -0.0968411|           -0.3353035|           -0.6364037|           -0.4616761|                       -0.2229149|                          -0.2229149|                           -0.2198685|                0.0170958|                   -0.6344017|               -0.2056384|                0.0632633|               -0.0938484|                   -0.2622040|                   -0.1606757|                   -0.7082289|       -0.1434542|        0.1794162|       -0.1739866|                       -0.3899168|                               -0.3423641|                   -0.0380522|                       -0.6828683| WALKING\_UPSTAIRS |
+| 347  |               0.3578298|              -0.0135190|              -0.1312716|                  0.9175639|                 -0.3476580|                  0.0247333|                   0.1670412|                  -0.2494590|                  -0.0203950|      -0.0247019|      -0.0884329|       0.0275960|          -0.2090761|           0.1212508|          -0.2661790|                      -0.3219591|                         -0.3219591|                          -0.3156813|              -0.5078510|                  -0.6205158|              -0.3605449|              -0.1200438|              -0.4438267|                  -0.3100527|                  -0.2176860|                  -0.5615223|      -0.5213903|      -0.6232268|      -0.3559163|                      -0.3910312|                              -0.2214231|                  -0.6191444|                      -0.7052561|               -0.4524211|               -0.1497959|               -0.4016534|                  -0.9546441|                  -0.9674112|                  -0.9772299|                   -0.2847004|                   -0.1662301|                   -0.6007529|       -0.6313242|       -0.6077765|       -0.4494047|           -0.4960690|           -0.7489839|           -0.4929908|                       -0.4523385|                          -0.4523385|                           -0.2660081|               -0.6442109|                   -0.7124614|               -0.4931278|               -0.2199579|               -0.4251551|                   -0.3215543|                   -0.1648317|                   -0.6381317|       -0.6662322|       -0.6011945|       -0.5340678|                       -0.5749828|                               -0.3298675|                   -0.7281045|                       -0.7415100| WALKING           |
+| 871  |               0.3492413|              -0.0096153|              -0.1086138|                  0.9115734|                 -0.2240710|                 -0.2365209|                  -0.0191936|                  -0.5067258|                  -0.1372521|      -0.0577370|      -0.1046518|       0.2949491|          -0.1991355|          -0.0491046|          -0.0907053|                      -0.2204354|                         -0.2204354|                          -0.4980906|              -0.5001413|                  -0.6494810|              -0.4539318|              -0.0976979|              -0.3124988|                  -0.5780672|                  -0.5098281|                  -0.4361141|      -0.5836278|      -0.5639806|      -0.4100566|                      -0.3629786|                              -0.4640309|                  -0.6162065|                      -0.6334398|               -0.3815359|               -0.0207746|               -0.2653186|                  -0.9734033|                  -0.9116978|                  -0.9560680|                   -0.5674606|                   -0.4994555|                   -0.4992568|       -0.6768748|       -0.5838692|       -0.3752657|           -0.6614222|           -0.6442927|           -0.5943067|                       -0.3535070|                          -0.3535070|                           -0.4816908|               -0.5995190|                   -0.6428144|               -0.3550848|               -0.0431998|               -0.2970052|                   -0.5949539|                   -0.5227983|                   -0.5621459|       -0.7064435|       -0.5995717|       -0.4212686|                       -0.4482502|                               -0.5059767|                   -0.6568528|                       -0.6804831| WALKING\_UPSTAIRS |
+| 724  |               0.2587512|              -0.0184846|              -0.1200327|                  0.9407900|                 -0.1494667|                 -0.1764073|                  -0.1866124|                   0.1290696|                   0.0895915|      -0.3983830|       0.0503031|       0.2384666|          -0.0117734|          -0.0056383|          -0.0999537|                      -0.4048874|                         -0.4048874|                          -0.5337189|              -0.2288774|                  -0.7158180|              -0.4690980|              -0.4364857|              -0.5519912|                  -0.4913694|                  -0.6058333|                  -0.6635717|      -0.5515989|      -0.6167732|      -0.4667937|                      -0.4486804|                              -0.4393261|                  -0.6207083|                      -0.7762683|               -0.4990374|               -0.2676332|               -0.4457524|                  -0.9912728|                  -0.9478340|                  -0.9294282|                   -0.4166975|                   -0.5886447|                   -0.6967505|       -0.5647388|       -0.5169502|       -0.1085935|           -0.6732672|           -0.7526176|           -0.6914993|                       -0.4554393|                          -0.4554393|                           -0.4330129|               -0.5403523|                   -0.7659598|               -0.5112292|               -0.2365711|               -0.4333492|                   -0.3928442|                   -0.5973408|                   -0.7284721|       -0.5730155|       -0.4677295|       -0.1008283|                       -0.5434053|                               -0.4283461|                   -0.5662916|                       -0.7688021| WALKING\_UPSTAIRS |
+| 2464 |               0.2947908|              -0.0224683|              -0.1232778|                 -0.3802240|                  0.9641601|                 -0.2058526|                   0.0548419|                   0.0110209|                   0.0014831|      -0.0355709|      -0.0949116|       0.0819192|          -0.1160821|          -0.0397027|          -0.0618749|                      -0.9695844|                         -0.9695844|                          -0.9714191|              -0.9603851|                  -0.9713813|              -0.9645578|              -0.9687292|              -0.9735191|                  -0.9700548|                  -0.9646474|                  -0.9752173|      -0.9646482|      -0.9634970|      -0.9410838|                      -0.9728813|                              -0.9707657|                  -0.9597775|                      -0.9747211|               -0.9710484|               -0.9740654|               -0.9759496|                  -0.9648527|                  -0.9902150|                  -0.9698829|                   -0.9697456|                   -0.9633187|                   -0.9799562|       -0.9752086|       -0.9683537|       -0.9395395|           -0.9724033|           -0.9713622|           -0.9677187|                       -0.9761218|                          -0.9761218|                           -0.9731331|               -0.9589190|                   -0.9746678|               -0.9740062|               -0.9779205|               -0.9786915|                   -0.9721105|                   -0.9642540|                   -0.9836865|       -0.9786427|       -0.9719407|       -0.9443696|                       -0.9810407|                               -0.9751842|                   -0.9652755|                       -0.9758511| LAYING            |
+| 2109 |               0.2781106|              -0.0155696|              -0.1130526|                  0.9393606|                 -0.2111589|                 -0.1772955|                   0.0817314|                   0.0022816|                  -0.0130002|      -0.0298879|      -0.0799156|       0.0842839|          -0.0966941|          -0.0450527|          -0.0531629|                      -0.9929674|                         -0.9929674|                          -0.9921215|              -0.9901481|                  -0.9940139|              -0.9924753|              -0.9822356|              -0.9902852|                  -0.9900587|                  -0.9849926|                  -0.9930363|      -0.9873025|      -0.9892124|      -0.9942380|                      -0.9916795|                              -0.9931347|                  -0.9908172|                      -0.9905459|               -0.9939937|               -0.9856840|               -0.9900436|                  -0.9950556|                  -0.9921604|                  -0.9891153|                   -0.9908989|                   -0.9855603|                   -0.9947795|       -0.9885433|       -0.9916232|       -0.9955305|           -0.9924473|           -0.9915475|           -0.9942974|                       -0.9924047|                          -0.9924047|                           -0.9935192|               -0.9901487|                   -0.9913473|               -0.9946922|               -0.9876174|               -0.9897598|                   -0.9928385|                   -0.9873827|                   -0.9951999|       -0.9888793|       -0.9935258|       -0.9964450|                       -0.9931928|                               -0.9927446|                   -0.9911631|                       -0.9928347| STANDING          |
+
+### Putting All Transformations Together
+
+Let's create a single function which puts every single transformation we've made together:
 
 ``` r
 cleanup_data <- function(data, labels) {
@@ -380,19 +481,27 @@ cleanup_data <- function(data, labels) {
   data <- normalize_variable_names(data)
   add_activity_label_variable(data, activities)
 }
+```
 
+Which we can apply to the training data-set as well:
+
+``` r
 train_data <- cleanup_data(train_data, train_labels)
 sample_data_frame(train_data, 6)
 ```
 
-|      |  tBodyAccelerationMeanX|  tBodyAccelerationMeanY|  tBodyAccelerationMeanZ|  tGravityAccelerationMeanX|  tGravityAccelerationMeanY|  tGravityAccelerationMeanZ|  tBodyAccelerationJerkMeanX|  tBodyAccelerationJerkMeanY|  tBodyAccelerationJerkMeanZ|  tBodyGyroMeanX|  tBodyGyroMeanY|  tBodyGyroMeanZ|  tBodyGyroJerkMeanX|  tBodyGyroJerkMeanY|  tBodyGyroJerkMeanZ|  tBodyAccelerationMagnitudeMean|  tGravityAccelerationMagnitudeMean|  tBodyAccelerationJerkMagnitudeMean|  tBodyGyroMagnitudeMean|  tBodyGyroJerkMagnitudeMean|  fBodyAccelerationMeanX|  fBodyAccelerationMeanY|  fBodyAccelerationMeanZ|  fBodyAccelerationJerkMeanX|  fBodyAccelerationJerkMeanY|  fBodyAccelerationJerkMeanZ|  fBodyGyroMeanX|  fBodyGyroMeanY|  fBodyGyroMeanZ|  fBodyAccelerationMagnitudeMean|  fBodyBodyAccelerationJerkMagnitudeMean|  fBodyBodyGyroMagnitudeMean|  fBodyBodyGyroJerkMagnitudeMean|  tBodyAccelerationSigmaX|  tBodyAccelerationSigmaY|  tBodyAccelerationSigmaZ|  tGravityAccelerationSigmaX|  tGravityAccelerationSigmaY|  tGravityAccelerationSigmaZ|  tBodyAccelerationJerkSigmaX|  tBodyAccelerationJerkSigmaY|  tBodyAccelerationJerkSigmaZ|  tBodyGyroSigmaX|  tBodyGyroSigmaY|  tBodyGyroSigmaZ|  tBodyGyroJerkSigmaX|  tBodyGyroJerkSigmaY|  tBodyGyroJerkSigmaZ|  tBodyAccelerationMagnitudeSigma|  tGravityAccelerationMagnitudeSigma|  tBodyAccelerationJerkMagnitudeSigma|  tBodyGyroMagnitudeSigma|  tBodyGyroJerkMagnitudeSigma|  fBodyAccelerationSigmaX|  fBodyAccelerationSigmaY|  fBodyAccelerationSigmaZ|  fBodyAccelerationJerkSigmaX|  fBodyAccelerationJerkSigmaY|  fBodyAccelerationJerkSigmaZ|  fBodyGyroSigmaX|  fBodyGyroSigmaY|  fBodyGyroSigmaZ|  fBodyAccelerationMagnitudeSigma|  fBodyBodyAccelerationJerkMagnitudeSigma|  fBodyBodyGyroMagnitudeSigma|  fBodyBodyGyroJerkMagnitudeSigma| ActivityLabel     |
-|------|-----------------------:|-----------------------:|-----------------------:|--------------------------:|--------------------------:|--------------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------:|-------------------:|-------------------:|-------------------------------:|----------------------------------:|-----------------------------------:|-----------------------:|---------------------------:|-----------------------:|-----------------------:|-----------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------------------:|---------------------------------------:|---------------------------:|-------------------------------:|------------------------:|------------------------:|------------------------:|---------------------------:|---------------------------:|---------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------:|--------------------:|--------------------:|--------------------------------:|-----------------------------------:|------------------------------------:|------------------------:|----------------------------:|------------------------:|------------------------:|------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------------------:|----------------------------------------:|----------------------------:|--------------------------------:|:------------------|
-| 6733 |               0.3203713|              -0.0244886|              -0.0915196|                 -0.4469464|                  0.9414140|                  0.3172827|                   0.0223138|                   0.0434220|                  -0.0017134|      -0.0245833|      -0.1097558|       0.3885082|          -0.1015924|          -0.0358040|          -0.1260260|                      -0.9279765|                         -0.9279765|                          -0.9814940|              -0.8616157|                  -0.9903758|              -0.9346480|              -0.9474841|              -0.9748708|                  -0.9867608|                  -0.9689450|                  -0.9816096|      -0.9851190|      -0.9843985|      -0.8901968|                      -0.9196918|                              -0.9801494|                  -0.9291391|                      -0.9900479|               -0.9165914|               -0.9384634|               -0.9556945|                  -0.8285361|                  -0.9368302|                  -0.9634582|                   -0.9869138|                   -0.9677995|                   -0.9845604|       -0.9889728|       -0.9796802|       -0.8722826|           -0.9865773|           -0.9896929|           -0.9942786|                       -0.9052633|                          -0.9052633|                           -0.9813108|               -0.8896517|                   -0.9906444|               -0.9100748|               -0.9368083|               -0.9486090|                   -0.9882734|                   -0.9686383|                   -0.9861691|       -0.9901647|       -0.9771647|       -0.8783209|                       -0.9112499|                               -0.9816340|                   -0.8854710|                       -0.9918098| LAYING            |
-| 524  |               0.2922183|              -0.0262871|              -0.1014341|                  0.9054931|                 -0.0992246|                  0.3066640|                   0.0218830|                  -0.1833467|                  -0.0922422|       0.0239192|      -0.1082967|       0.1338844|           0.0286673|          -0.0334241|          -0.0741259|                      -0.4332252|                         -0.4332252|                          -0.5779549|              -0.4052997|                  -0.6924390|              -0.6715960|              -0.2525310|              -0.6028920|                  -0.6916586|                  -0.4358491|                  -0.7228860|      -0.4791355|      -0.6862113|      -0.5478376|                      -0.5976739|                              -0.6143089|                  -0.6203818|                      -0.7843359|               -0.6138206|               -0.1694796|               -0.4852036|                  -0.9827884|                  -0.9703389|                  -0.9653510|                   -0.6565678|                   -0.4022073|                   -0.7432248|       -0.4365115|       -0.6190620|       -0.5227005|           -0.5494607|           -0.7986814|           -0.6733943|                       -0.5674119|                          -0.5674119|                           -0.6074654|               -0.5876407|                   -0.7778957|               -0.5930588|               -0.1799713|               -0.4650782|                   -0.6506781|                   -0.4047907|                   -0.7614477|       -0.4338302|       -0.5854666|       -0.5582293|                       -0.6177070|                               -0.6005047|                   -0.6356735|                       -0.7848500| WALKING           |
-| 1620 |               0.2923939|              -0.0173020|              -0.1248849|                  0.8008366|                 -0.3062750|                 -0.4076670|                  -0.0166833|                   0.0314171|                   0.0275184|      -0.0612110|      -0.0706631|       0.1393712|          -0.2079087|           0.0555831|           0.1051529|                      -0.2479087|                         -0.2479087|                          -0.4498829|              -0.2349614|                  -0.7315778|              -0.3653308|              -0.3153582|              -0.4524595|                  -0.3858063|                  -0.5450221|                  -0.5859082|      -0.4420957|      -0.6696889|      -0.3672283|                      -0.2893556|                              -0.3686344|                  -0.5986190|                      -0.7873084|               -0.3570669|               -0.0777499|               -0.2690820|                  -0.9696235|                  -0.9586078|                  -0.9670254|                   -0.3581044|                   -0.4972922|                   -0.6116764|       -0.3196011|       -0.6390360|       -0.0390038|           -0.6907777|           -0.7710839|           -0.7206766|                       -0.2550301|                          -0.2550301|                           -0.3761723|               -0.4280413|                   -0.7948044|               -0.3537503|               -0.0297731|               -0.2343428|                   -0.3857803|                   -0.4781515|                   -0.6349356|       -0.3024343|       -0.6237746|       -0.0415387|                       -0.3519092|                               -0.3894319|                   -0.4239113|                       -0.8198677| WALKING\_UPSTAIRS |
-| 42   |               0.3153397|              -0.0183299|              -0.1104805|                  0.9355008|                 -0.1998167|                 -0.1858335|                  -0.2056565|                   0.3718563|                   0.2368058|       0.0037282|      -0.0119785|      -0.0185206|          -0.2187524|           0.1989106|          -0.0392136|                       0.1540312|                          0.1540312|                           0.2038221|               0.1794268|                   0.1460856|              -0.0812040|               0.2545034|               0.1056061|                  -0.0038222|                   0.1102958|                   0.0760427|       0.1432001|       0.2349873|      -0.0029265|                       0.1064930|                               0.0439392|                   0.0630160|                      -0.1397436|               -0.0265929|                0.3079307|                0.0511768|                  -0.9739537|                  -0.9667576|                  -0.9492571|                    0.0043926|                    0.2119657|                    0.0359553|       -0.1203814|        0.1843912|       -0.1230935|            0.1808104|            0.0736555|           -0.1257189|                       -0.0794947|                          -0.0794947|                           -0.0355142|               -0.0056227|                   -0.1696226|               -0.0058559|                0.2530635|               -0.0701299|                   -0.0783340|                    0.2435199|                   -0.0004389|       -0.2041942|        0.1435874|       -0.2464819|                       -0.3473027|                               -0.1501585|                   -0.2389985|                       -0.2616298| WALKING           |
-| 6217 |               0.2793120|              -0.0166407|              -0.1096674|                 -0.1337899|                  0.9340037|                  0.1880021|                   0.0758720|                   0.0075855|                  -0.0028210|      -0.0278505|      -0.0737920|       0.0893597|          -0.0999058|          -0.0401299|          -0.0563289|                      -0.9979454|                         -0.9979454|                          -0.9942589|              -0.9989516|                  -0.9993253|              -0.9973222|              -0.9952681|              -0.9897189|                  -0.9967896|                  -0.9951932|                  -0.9866881|      -0.9969393|      -0.9994520|      -0.9970635|                      -0.9964797|                              -0.9936579|                  -0.9993512|                      -0.9992082|               -0.9976056|               -0.9961913|               -0.9923745|                  -0.9981331|                  -0.9979362|                  -0.9992563|                   -0.9961771|                   -0.9945490|                   -0.9904416|       -0.9976899|       -0.9995261|       -0.9977683|           -0.9974470|           -0.9996132|           -0.9973022|                       -0.9973485|                          -0.9973485|                           -0.9949662|               -0.9991939|                   -0.9992907|               -0.9976842|               -0.9958537|               -0.9941450|                   -0.9957508|                   -0.9940697|                   -0.9934213|       -0.9978951|       -0.9995228|       -0.9982552|                       -0.9977547|                               -0.9961039|                   -0.9990673|                       -0.9991486| LAYING            |
-| 6870 |               0.2752802|              -0.0182061|              -0.1074052|                 -0.2849675|                  0.8601378|                  0.4646651|                   0.0760807|                   0.0146049|                  -0.0000045|      -0.0286093|      -0.0744865|       0.0846441|          -0.0975499|          -0.0401643|          -0.0541839|                      -0.9977763|                         -0.9977763|                          -0.9943459|              -0.9983569|                  -0.9984437|              -0.9938739|              -0.9919281|              -0.9972047|                  -0.9915263|                  -0.9919056|                  -0.9963601|      -0.9970264|      -0.9978371|      -0.9967087|                      -0.9976714|                              -0.9975947|                  -0.9983979|                      -0.9991060|               -0.9948148|               -0.9942788|               -0.9972394|                  -0.9975245|                  -0.9961286|                  -0.9974570|                   -0.9910585|                   -0.9922150|                   -0.9970438|       -0.9979381|       -0.9977742|       -0.9970596|           -0.9969627|           -0.9983583|           -0.9971300|                       -0.9982994|                          -0.9982994|                           -0.9979861|               -0.9983518|                   -0.9991052|               -0.9951975|               -0.9950048|               -0.9965810|                   -0.9912733|                   -0.9932021|                   -0.9962096|       -0.9982230|       -0.9976648|       -0.9974048|                       -0.9983793|                               -0.9973570|                   -0.9984801|                       -0.9988133| LAYING            |
+|      |  tBodyAccelerationMeanX|  tBodyAccelerationMeanY|  tBodyAccelerationMeanZ|  tGravityAccelerationMeanX|  tGravityAccelerationMeanY|  tGravityAccelerationMeanZ|  tBodyAccelerationJerkMeanX|  tBodyAccelerationJerkMeanY|  tBodyAccelerationJerkMeanZ|  tBodyGyroMeanX|  tBodyGyroMeanY|  tBodyGyroMeanZ|  tBodyGyroJerkMeanX|  tBodyGyroJerkMeanY|  tBodyGyroJerkMeanZ|  tBodyAccelerationMagnitudeMean|  tGravityAccelerationMagnitudeMean|  tBodyAccelerationJerkMagnitudeMean|  tBodyGyroMagnitudeMean|  tBodyGyroJerkMagnitudeMean|  fBodyAccelerationMeanX|  fBodyAccelerationMeanY|  fBodyAccelerationMeanZ|  fBodyAccelerationJerkMeanX|  fBodyAccelerationJerkMeanY|  fBodyAccelerationJerkMeanZ|  fBodyGyroMeanX|  fBodyGyroMeanY|  fBodyGyroMeanZ|  fBodyAccelerationMagnitudeMean|  fBodyBodyAccelerationJerkMagnitudeMean|  fBodyBodyGyroMagnitudeMean|  fBodyBodyGyroJerkMagnitudeMean|  tBodyAccelerationSigmaX|  tBodyAccelerationSigmaY|  tBodyAccelerationSigmaZ|  tGravityAccelerationSigmaX|  tGravityAccelerationSigmaY|  tGravityAccelerationSigmaZ|  tBodyAccelerationJerkSigmaX|  tBodyAccelerationJerkSigmaY|  tBodyAccelerationJerkSigmaZ|  tBodyGyroSigmaX|  tBodyGyroSigmaY|  tBodyGyroSigmaZ|  tBodyGyroJerkSigmaX|  tBodyGyroJerkSigmaY|  tBodyGyroJerkSigmaZ|  tBodyAccelerationMagnitudeSigma|  tGravityAccelerationMagnitudeSigma|  tBodyAccelerationJerkMagnitudeSigma|  tBodyGyroMagnitudeSigma|  tBodyGyroJerkMagnitudeSigma|  fBodyAccelerationSigmaX|  fBodyAccelerationSigmaY|  fBodyAccelerationSigmaZ|  fBodyAccelerationJerkSigmaX|  fBodyAccelerationJerkSigmaY|  fBodyAccelerationJerkSigmaZ|  fBodyGyroSigmaX|  fBodyGyroSigmaY|  fBodyGyroSigmaZ|  fBodyAccelerationMagnitudeSigma|  fBodyBodyAccelerationJerkMagnitudeSigma|  fBodyBodyGyroMagnitudeSigma|  fBodyBodyGyroJerkMagnitudeSigma| ActivityLabel       |
+|------|-----------------------:|-----------------------:|-----------------------:|--------------------------:|--------------------------:|--------------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------:|-------------------:|-------------------:|-------------------------------:|----------------------------------:|-----------------------------------:|-----------------------:|---------------------------:|-----------------------:|-----------------------:|-----------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------------------:|---------------------------------------:|---------------------------:|-------------------------------:|------------------------:|------------------------:|------------------------:|---------------------------:|---------------------------:|---------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------:|--------------------:|--------------------:|--------------------------------:|-----------------------------------:|------------------------------------:|------------------------:|----------------------------:|------------------------:|------------------------:|------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------------------:|----------------------------------------:|----------------------------:|--------------------------------:|:--------------------|
+| 7043 |               0.1927777|              -0.0321007|              -0.0979518|                 -0.6176453|                  0.4277900|                  0.9250111|                   0.0880930|                   0.0049736|                  -0.0385136|      -0.0017479|      -0.0238998|       0.1006324|          -0.1055954|          -0.0714495|          -0.0430052|                      -0.9186787|                         -0.9186787|                          -0.9616820|              -0.9191537|                  -0.9672488|              -0.9593891|              -0.9017094|              -0.9515849|                  -0.9706184|                  -0.9471867|                  -0.9640488|      -0.9341957|      -0.9372021|      -0.9542701|                      -0.9268927|                              -0.9634766|                  -0.9355322|                      -0.9551903|               -0.9600085|               -0.8613917|               -0.9535996|                  -0.8983418|                  -0.9048820|                  -0.9449175|                   -0.9726966|                   -0.9399127|                   -0.9693720|       -0.9319600|       -0.9337161|       -0.9522105|           -0.9482766|           -0.9646891|           -0.9724833|                       -0.9107390|                          -0.9107390|                           -0.9630172|               -0.9283643|                   -0.9554736|               -0.9600832|               -0.8513239|               -0.9578026|                   -0.9779142|                   -0.9357370|                   -0.9734815|       -0.9321144|       -0.9319958|       -0.9557101|                       -0.9151216|                               -0.9609598|                   -0.9354669|                       -0.9586332| LAYING              |
+| 2756 |               0.2077579|              -0.0083759|              -0.0983270|                  0.9462867|                 -0.2305354|                 -0.0692752|                  -0.3430520|                   0.1137843|                   0.1040574|       0.0886841|      -0.1708923|       0.0754432|           0.0440543|          -0.0731414|           0.0409137|                       0.0583703|                          0.0583703|                          -0.3638405|              -0.1078496|                  -0.6233163|              -0.0535680|              -0.1709842|              -0.4571601|                  -0.2933292|                  -0.4452391|                  -0.5888715|      -0.2662089|      -0.5009853|      -0.3263205|                      -0.0473842|                              -0.3070439|                  -0.4485446|                      -0.6452637|                0.0724841|               -0.0010964|               -0.4391792|                  -0.9557709|                  -0.9278544|                  -0.9594695|                   -0.2400389|                   -0.4290218|                   -0.6499456|       -0.0995882|       -0.4519690|       -0.4186546|           -0.6068037|           -0.6727916|           -0.4839508|                       -0.0854231|                          -0.0854231|                           -0.3336153|               -0.3114088|                   -0.6598532|                0.1183220|                0.0168082|               -0.4735286|                   -0.2513348|                   -0.4502821|                   -0.7139780|       -0.0761251|       -0.4275468|       -0.5054878|                       -0.2497039|                               -0.3735670|                   -0.3409406|                       -0.7048244| WALKING\_DOWNSTAIRS |
+| 2200 |               0.0479261|              -0.0668853|              -0.0819557|                  0.7075597|                 -0.2811303|                 -0.5363142|                   0.1584796|                   0.0926321|                  -0.0343943|       0.3585465|      -0.3611395|      -0.4232647|          -0.2828362|          -0.0798068|           0.1413323|                       0.2156691|                          0.2156691|                          -0.3162610|               0.3656803|                  -0.3813360|              -0.3861604|               0.0100258|               0.2739887|                  -0.4292641|                  -0.4307780|                  -0.2371175|      -0.4307022|       0.1211937|       0.1580248|                      -0.0410028|                              -0.2991412|                   0.0540917|                      -0.4680323|               -0.3067434|                0.3497995|                0.7740259|                  -0.8283053|                  -0.8332498|                  -0.8180784|                   -0.4138724|                   -0.4169725|                   -0.3042663|       -0.4720120|        0.4975649|        0.4232703|           -0.5958247|           -0.3764042|           -0.3034812|                        0.0147652|                           0.0147652|                           -0.3583842|                0.2851452|                   -0.4908327|               -0.2777157|                0.4164697|                0.8778262|                   -0.4499527|                   -0.4420676|                   -0.3692124|       -0.4883525|        0.6782131|        0.3697528|                       -0.1130600|                               -0.4474653|                    0.2155843|                       -0.5599635| WALKING\_UPSTAIRS   |
+| 4124 |               0.2647107|              -0.0085731|              -0.0850964|                  0.9321882|                  0.1145528|                  0.2148802|                   0.0748268|                   0.0153306|                   0.0198009|      -0.0277957|      -0.0579460|       0.0797453|          -0.0981168|          -0.0497149|          -0.0469465|                      -0.9715334|                         -0.9715334|                          -0.9937683|              -0.9824378|                  -0.9963476|              -0.9949115|              -0.9856175|              -0.9778606|                  -0.9950059|                  -0.9916921|                  -0.9901576|      -0.9981274|      -0.9831158|      -0.9891057|                      -0.9781224|                              -0.9937977|                  -0.9901364|                      -0.9964675|               -0.9941160|               -0.9750083|               -0.9572021|                  -0.9891171|                  -0.9834055|                  -0.9616114|                   -0.9951936|                   -0.9911494|                   -0.9912312|       -0.9989246|       -0.9761712|       -0.9868619|           -0.9976249|           -0.9950407|           -0.9949115|                       -0.9707375|                          -0.9707375|                           -0.9939324|               -0.9842769|                   -0.9966859|               -0.9936166|               -0.9708398|               -0.9494853|                   -0.9958639|                   -0.9910492|                   -0.9907430|       -0.9992299|       -0.9726460|       -0.9871301|                       -0.9700943|                               -0.9926999|                   -0.9830879|                       -0.9969038| SITTING             |
+| 1330 |               0.3935921|              -0.0287921|              -0.1400612|                  0.9024400|                 -0.3209572|                  0.0988327|                  -0.4314904|                  -0.0639754|                   0.3016814|      -0.4242029|       0.4145585|      -0.0253435|          -0.3556140|           0.2878947|           0.1191863|                       0.0599692|                          0.0599692|                          -0.2219177|              -0.1283485|                  -0.5915103|               0.0436819|              -0.1304576|              -0.4719243|                  -0.1807871|                  -0.2399426|                  -0.6826788|      -0.3321361|      -0.3347896|      -0.5298074|                      -0.1383022|                              -0.2357490|                  -0.3586858|                      -0.6895482|                0.0568259|               -0.0926677|               -0.2996889|                  -0.9527988|                  -0.9875705|                  -0.9566168|                   -0.1290419|                   -0.2058792|                   -0.7155443|       -0.5054838|       -0.1014115|       -0.5941987|           -0.4267135|           -0.6951503|           -0.6314760|                       -0.1305386|                          -0.1305386|                           -0.3253407|               -0.1635305|                   -0.6976165|                0.0620046|               -0.1300341|               -0.2677265|                   -0.1515822|                   -0.2216622|                   -0.7471421|       -0.5610425|        0.0102117|       -0.6547319|                       -0.2611228|                               -0.4655835|                   -0.1843046|                       -0.7301211| WALKING\_UPSTAIRS   |
+| 2637 |               0.2064892|              -0.0418149|              -0.1000732|                  0.8984892|                 -0.0475094|                  0.3329084|                   0.0563893|                  -0.1486170|                  -0.1004459|      -0.3211405|       0.0605765|      -0.0900574|          -0.1504226|           0.1112298|          -0.2335192|                      -0.2819021|                         -0.2819021|                          -0.5405096|              -0.3512487|                  -0.7180363|              -0.5191246|              -0.1446704|              -0.5377258|                  -0.6469426|                  -0.3378857|                  -0.6670694|      -0.3964832|      -0.6927464|      -0.5058793|                      -0.3419774|                              -0.4752561|                  -0.5713424|                      -0.7480033|               -0.3466796|               -0.1664352|               -0.4590039|                  -0.9664904|                  -0.9548266|                  -0.9705161|                   -0.6090827|                   -0.3007801|                   -0.6897389|       -0.4736928|       -0.5895067|       -0.5188353|           -0.5004786|           -0.8631663|           -0.6618294|                       -0.3574250|                          -0.3574250|                           -0.4618731|               -0.5144177|                   -0.7360056|               -0.2898882|               -0.2309996|               -0.4587720|                   -0.6044201|                   -0.3064506|                   -0.7101237|       -0.4995498|       -0.5397537|       -0.5670199|                       -0.4657903|                               -0.4480284|                   -0.5588642|                       -0.7389292| WALKING\_DOWNSTAIRS |
+
+### Resulting Clean Data-set
+
+Let's bind together the transformed training and testing data-sets:
 
 ``` r
 all_data <- rbind(test_data, train_data)
@@ -401,9 +510,221 @@ dim(all_data)
 
     ## [1] 10299    67
 
+Here's a full description of the variables from the clean data-set:
+
+<table>
+<colgroup>
+<col width="14%" />
+<col width="85%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Activity Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ActivityLabel</td>
+<td>A descriptive label for the activity, i.e.: LAYING, SITTING, WALKING, WALKING_UPSTAIRS or WALKING_DOWNSTAIRS.</td>
+</tr>
+</tbody>
+</table>
+
+> **Note:**
+>
+> Acceleration Units: Number of g's.
+>
+> Prefix 't' stands for "time domain signal", 'f' for "frequency domain signal".
+
+<table>
+<colgroup>
+<col width="33%" />
+<col width="66%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Acceleration Mean Variables</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>[tf]BodyAccelerationMean[XYZ]</td>
+<td>Mean of each component (X, Y &amp; Z) of acceleration due to body motion.</td>
+</tr>
+<tr class="even">
+<td>[tf]BodyAccelerationMagnitudeMean</td>
+<td>Mean of the magnitude (modulus) of acceleration vector due to body motion.</td>
+</tr>
+<tr class="odd">
+<td>[tf]GravityAccelerationMean[XYZ]</td>
+<td>Mean of each component (X, Y &amp; Z) of acceleration due to gravity.</td>
+</tr>
+<tr class="even">
+<td>[tf]GravityAccelerationMagnitudeMean</td>
+<td>Mean of the magnitude (modulus) of acceleration vector due to gravity.</td>
+</tr>
+</tbody>
+</table>
+
+<table style="width:100%;">
+<colgroup>
+<col width="32%" />
+<col width="67%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Acceleration Standard Deviation Variables</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>[tf]BodyAccelerationSigma[XYZ]</td>
+<td>Standard Deviation of each component (X, Y &amp; Z) of acceleration due to body motion.</td>
+</tr>
+<tr class="even">
+<td>[tf]BodyAccelerationMagnitudeSigma</td>
+<td>Standard Deviation of the magnitude (modulus) of acceleration vector due to body motion.</td>
+</tr>
+<tr class="odd">
+<td>[tf]GravityAccelerationSigma[XYZ]</td>
+<td>Standard Deviation of each component (X, Y &amp; Z) of acceleration due to gravity.</td>
+</tr>
+<tr class="even">
+<td>[tf]GravityAccelerationMagnitudeSigma</td>
+<td>Standard Deviation of the magnitude (modulus) of acceleration vector due to gravity.</td>
+</tr>
+</tbody>
+</table>
+
+> **Note:**
+>
+> "Acceleration Jerk" or simply [jerk](https://en.wikipedia.org/wiki/Jerk_(physics)) is the rate of change of the acceleration.
+>
+> Jerk Units: Number of g's per second.
+
+<table>
+<colgroup>
+<col width="37%" />
+<col width="62%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Acceleration Jerk Mean Variables</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>[tf]BodyAccelerationJerkMean[XYZ]</td>
+<td>Mean of each component (X, Y &amp; Z) of jerk due to body motion.</td>
+</tr>
+<tr class="even">
+<td>[tf]BodyAccelerationJerkMagnitudeMean</td>
+<td>Mean of the magnitude (modulus) of jerk vector due to body motion.</td>
+</tr>
+<tr class="odd">
+<td>[tf]GravityAccelerationJerkMean[XYZ]</td>
+<td>Mean of each component (X, Y &amp; Z) of jerk due to gravity.</td>
+</tr>
+<tr class="even">
+<td>[tf]GravityAccelerationJerkMagnitudeMean</td>
+<td>Mean of the magnitude (modulus) of jerk vector due to gravity.</td>
+</tr>
+</tbody>
+</table>
+
+<table>
+<colgroup>
+<col width="36%" />
+<col width="63%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Acceleration Jerk Standard Deviation Variables</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>[tf]BodyAccelerationJerkSigma[XYZ]</td>
+<td>Standard Deviation of each component (X, Y &amp; Z) of jerk due to body motion.</td>
+</tr>
+<tr class="even">
+<td>[tf]BodyAccelerationJerkMagnitudeSigma</td>
+<td>Standard Deviation of the magnitude (modulus) of jerk vector due to body motion.</td>
+</tr>
+<tr class="odd">
+<td>[tf]GravityAccelerationJerkSigma[XYZ]</td>
+<td>Standard Deviation of each component (X, Y &amp; Z) of jerk due to gravity.</td>
+</tr>
+<tr class="even">
+<td>[tf]GravityAccelerationJerkMagnitudeSigma</td>
+<td>Standard Deviation of the magnitude (modulus) of jerk vector due to gravity.</td>
+</tr>
+</tbody>
+</table>
+
+> **Note:**
+>
+> Giro (Angular Velocity) Units: radians per second.
+
+<table>
+<colgroup>
+<col width="23%" />
+<col width="76%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Gyro Mean Variables</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>[tf]BodyGyroMean[XYZ]</td>
+<td>Mean of each component (X, Y &amp; Z) of the angular velocity due to body motion.</td>
+</tr>
+<tr class="even">
+<td>[tf]BodyGyroMagnitudeMean</td>
+<td>Mean of the magnitude (modulus) of the angular velocity vector due to body motion.</td>
+</tr>
+</tbody>
+</table>
+
+<table>
+<colgroup>
+<col width="25%" />
+<col width="74%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Gyro Standard Deviation Variables</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>[tf]BodyGyroSigma[XYZ]</td>
+<td>Standard Deviation of each component (X, Y &amp; Z) of the angular velocity due to body motion.</td>
+</tr>
+<tr class="even">
+<td>[tf]BodyGyroMagnitudeSigma</td>
+<td>Standard Deviation of the magnitude (modulus) of the angular velocity vector due to body motion.</td>
+</tr>
+</tbody>
+</table>
+
+Computing Averages per Activity
+-------------------------------
+
+The following data-set has been grouped by activity and all columns summarised into means:
+
 ``` r
-activity_averages_data <- all_data %>% group_by(ActivityLabel) %>% summarise_each(funs(mean))
-activity_averages_data
+averages_data <- all_data %>% group_by(ActivityLabel) %>% summarise_each(funs(mean))
+averages_data
 ```
 
 | ActivityLabel       |  tBodyAccelerationMeanX|  tBodyAccelerationMeanY|  tBodyAccelerationMeanZ|  tGravityAccelerationMeanX|  tGravityAccelerationMeanY|  tGravityAccelerationMeanZ|  tBodyAccelerationJerkMeanX|  tBodyAccelerationJerkMeanY|  tBodyAccelerationJerkMeanZ|  tBodyGyroMeanX|  tBodyGyroMeanY|  tBodyGyroMeanZ|  tBodyGyroJerkMeanX|  tBodyGyroJerkMeanY|  tBodyGyroJerkMeanZ|  tBodyAccelerationMagnitudeMean|  tGravityAccelerationMagnitudeMean|  tBodyAccelerationJerkMagnitudeMean|  tBodyGyroMagnitudeMean|  tBodyGyroJerkMagnitudeMean|  fBodyAccelerationMeanX|  fBodyAccelerationMeanY|  fBodyAccelerationMeanZ|  fBodyAccelerationJerkMeanX|  fBodyAccelerationJerkMeanY|  fBodyAccelerationJerkMeanZ|  fBodyGyroMeanX|  fBodyGyroMeanY|  fBodyGyroMeanZ|  fBodyAccelerationMagnitudeMean|  fBodyBodyAccelerationJerkMagnitudeMean|  fBodyBodyGyroMagnitudeMean|  fBodyBodyGyroJerkMagnitudeMean|  tBodyAccelerationSigmaX|  tBodyAccelerationSigmaY|  tBodyAccelerationSigmaZ|  tGravityAccelerationSigmaX|  tGravityAccelerationSigmaY|  tGravityAccelerationSigmaZ|  tBodyAccelerationJerkSigmaX|  tBodyAccelerationJerkSigmaY|  tBodyAccelerationJerkSigmaZ|  tBodyGyroSigmaX|  tBodyGyroSigmaY|  tBodyGyroSigmaZ|  tBodyGyroJerkSigmaX|  tBodyGyroJerkSigmaY|  tBodyGyroJerkSigmaZ|  tBodyAccelerationMagnitudeSigma|  tGravityAccelerationMagnitudeSigma|  tBodyAccelerationJerkMagnitudeSigma|  tBodyGyroMagnitudeSigma|  tBodyGyroJerkMagnitudeSigma|  fBodyAccelerationSigmaX|  fBodyAccelerationSigmaY|  fBodyAccelerationSigmaZ|  fBodyAccelerationJerkSigmaX|  fBodyAccelerationJerkSigmaY|  fBodyAccelerationJerkSigmaZ|  fBodyGyroSigmaX|  fBodyGyroSigmaY|  fBodyGyroSigmaZ|  fBodyAccelerationMagnitudeSigma|  fBodyBodyAccelerationJerkMagnitudeSigma|  fBodyBodyGyroMagnitudeSigma|  fBodyBodyGyroJerkMagnitudeSigma|
@@ -415,15 +736,12 @@ activity_averages_data
 | WALKING\_DOWNSTAIRS |               0.2881372|              -0.0163119|              -0.1057616|                  0.9264574|                 -0.1685072|                 -0.0479709|                   0.0892267|                   0.0007467|                  -0.0087286|      -0.0840345|      -0.0529929|       0.0946782|          -0.0728532|          -0.0512640|          -0.0546962|                       0.1012497|                          0.1012497|                          -0.1118018|              -0.1297856|                  -0.4168916|               0.0352597|               0.0566827|              -0.2137292|                  -0.0722968|                  -0.1163806|                  -0.3331903|      -0.2179229|      -0.3175927|      -0.1656251|                       0.1428494|                               0.0047625|                  -0.2895258|                      -0.4380073|                0.1007663|                0.0595486|               -0.1908045|                  -0.9497488|                  -0.9342661|                  -0.9124606|                   -0.0338826|                   -0.0736744|                   -0.3886661|       -0.3338175|       -0.3396314|       -0.2728099|           -0.3826898|           -0.4659438|           -0.3264560|                        0.1164889|                           0.1164889|                           -0.0112207|               -0.2514278|                   -0.4409293|                0.1219380|               -0.0082337|               -0.2458729|                   -0.0821905|                   -0.0914165|                   -0.4435547|       -0.3751275|       -0.3618537|       -0.3804100|                       -0.0754252|                               -0.0422714|                   -0.3612310|                       -0.4864430|
 | WALKING\_UPSTAIRS   |               0.2622946|              -0.0259233|              -0.1205379|                  0.8750034|                 -0.2813772|                 -0.1407957|                   0.0767293|                   0.0087589|                  -0.0060095|       0.0068245|      -0.0885225|       0.0598938|          -0.1121175|          -0.0386193|          -0.0525810|                      -0.1002041|                         -0.1002041|                          -0.3909386|              -0.1782811|                  -0.6080471|              -0.2934068|              -0.1349505|              -0.3681221|                  -0.3898968|                  -0.3646668|                  -0.5916701|      -0.3942482|      -0.4592535|      -0.2968577|                      -0.2620281|                              -0.3539620|                  -0.4497814|                      -0.6586945|               -0.2379897|               -0.0160325|               -0.1754497|                  -0.9481913|                  -0.9255493|                  -0.9019056|                   -0.3608634|                   -0.3392265|                   -0.6270636|       -0.4676071|       -0.3442318|       -0.2371368|           -0.5531328|           -0.6673392|           -0.5609892|                       -0.2498752|                          -0.2498752|                           -0.3854004|               -0.3371421|                   -0.6668367|               -0.2188880|               -0.0218110|               -0.1466018|                   -0.3889928|                   -0.3576329|                   -0.6615908|       -0.4952540|       -0.2931818|       -0.2920413|                       -0.3617535|                               -0.4342067|                   -0.3814064|                       -0.7030835|
 
-``` r
-sample_data_frame(all_data, 6)
-```
+Saving Clean Data to Disk
+-------------------------
 
-|      |  tBodyAccelerationMeanX|  tBodyAccelerationMeanY|  tBodyAccelerationMeanZ|  tGravityAccelerationMeanX|  tGravityAccelerationMeanY|  tGravityAccelerationMeanZ|  tBodyAccelerationJerkMeanX|  tBodyAccelerationJerkMeanY|  tBodyAccelerationJerkMeanZ|  tBodyGyroMeanX|  tBodyGyroMeanY|  tBodyGyroMeanZ|  tBodyGyroJerkMeanX|  tBodyGyroJerkMeanY|  tBodyGyroJerkMeanZ|  tBodyAccelerationMagnitudeMean|  tGravityAccelerationMagnitudeMean|  tBodyAccelerationJerkMagnitudeMean|  tBodyGyroMagnitudeMean|  tBodyGyroJerkMagnitudeMean|  fBodyAccelerationMeanX|  fBodyAccelerationMeanY|  fBodyAccelerationMeanZ|  fBodyAccelerationJerkMeanX|  fBodyAccelerationJerkMeanY|  fBodyAccelerationJerkMeanZ|  fBodyGyroMeanX|  fBodyGyroMeanY|  fBodyGyroMeanZ|  fBodyAccelerationMagnitudeMean|  fBodyBodyAccelerationJerkMagnitudeMean|  fBodyBodyGyroMagnitudeMean|  fBodyBodyGyroJerkMagnitudeMean|  tBodyAccelerationSigmaX|  tBodyAccelerationSigmaY|  tBodyAccelerationSigmaZ|  tGravityAccelerationSigmaX|  tGravityAccelerationSigmaY|  tGravityAccelerationSigmaZ|  tBodyAccelerationJerkSigmaX|  tBodyAccelerationJerkSigmaY|  tBodyAccelerationJerkSigmaZ|  tBodyGyroSigmaX|  tBodyGyroSigmaY|  tBodyGyroSigmaZ|  tBodyGyroJerkSigmaX|  tBodyGyroJerkSigmaY|  tBodyGyroJerkSigmaZ|  tBodyAccelerationMagnitudeSigma|  tGravityAccelerationMagnitudeSigma|  tBodyAccelerationJerkMagnitudeSigma|  tBodyGyroMagnitudeSigma|  tBodyGyroJerkMagnitudeSigma|  fBodyAccelerationSigmaX|  fBodyAccelerationSigmaY|  fBodyAccelerationSigmaZ|  fBodyAccelerationJerkSigmaX|  fBodyAccelerationJerkSigmaY|  fBodyAccelerationJerkSigmaZ|  fBodyGyroSigmaX|  fBodyGyroSigmaY|  fBodyGyroSigmaZ|  fBodyAccelerationMagnitudeSigma|  fBodyBodyAccelerationJerkMagnitudeSigma|  fBodyBodyGyroMagnitudeSigma|  fBodyBodyGyroJerkMagnitudeSigma| ActivityLabel       |
-|------|-----------------------:|-----------------------:|-----------------------:|--------------------------:|--------------------------:|--------------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------:|-------------------:|-------------------:|-------------------------------:|----------------------------------:|-----------------------------------:|-----------------------:|---------------------------:|-----------------------:|-----------------------:|-----------------------:|---------------------------:|---------------------------:|---------------------------:|---------------:|---------------:|---------------:|-------------------------------:|---------------------------------------:|---------------------------:|-------------------------------:|------------------------:|------------------------:|------------------------:|---------------------------:|---------------------------:|---------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------:|--------------------:|--------------------:|--------------------------------:|-----------------------------------:|------------------------------------:|------------------------:|----------------------------:|------------------------:|------------------------:|------------------------:|----------------------------:|----------------------------:|----------------------------:|----------------:|----------------:|----------------:|--------------------------------:|----------------------------------------:|----------------------------:|--------------------------------:|:--------------------|
-| 889  |               0.1725609|              -0.0181376|              -0.1238796|                  0.9260261|                 -0.2919898|                  0.0191298|                  -0.4105215|                   0.2538385|                  -0.0699486|       0.4478108|      -0.5462332|       0.0939832|          -0.1369351|          -0.1440978|          -0.3422605|                      -0.0361481|                         -0.0361481|                          -0.2258542|               0.1011363|                  -0.4478029|              -0.0288735|               0.1370231|              -0.4243659|                  -0.1696319|                  -0.0554251|                  -0.5707056|      -0.1683363|      -0.2399928|      -0.1370150|                      -0.1629076|                              -0.1846018|                  -0.0915195|                      -0.4975566|               -0.2206519|                0.2012562|               -0.2145714|                  -0.9688142|                  -0.9415850|                  -0.8964844|                   -0.2151347|                   -0.0410406|                   -0.6416249|       -0.2661431|        0.0188676|       -0.2270195|           -0.2794745|           -0.5507410|           -0.4414088|                       -0.2927704|                          -0.2927704|                           -0.2651389|                0.0276056|                   -0.5477373|               -0.3104893|                0.1586208|               -0.1721591|                   -0.3448313|                   -0.0924253|                   -0.7180829|       -0.2995459|        0.1430042|       -0.3295515|                       -0.4883408|                               -0.3875232|                   -0.0676508|                       -0.6583559| WALKING\_UPSTAIRS   |
-| 1812 |               0.2753817|              -0.0117183|              -0.1077695|                  0.9716878|                  0.0324377|                  0.0426253|                   0.0750916|                   0.0107086|                   0.0090944|      -0.0212903|      -0.0719921|       0.1286988|          -0.0948754|          -0.0375677|          -0.0504065|                      -0.9923385|                         -0.9923385|                          -0.9893645|              -0.9816578|                  -0.9944435|              -0.9976614|              -0.9847317|              -0.9835216|                  -0.9963653|                  -0.9840070|                  -0.9835213|      -0.9959746|      -0.9925782|      -0.9856753|                      -0.9897262|                              -0.9919611|                  -0.9902810|                      -0.9946451|               -0.9983349|               -0.9883546|               -0.9848191|                  -0.9987123|                  -0.9899134|                  -0.9867391|                   -0.9963519|                   -0.9844583|                   -0.9866627|       -0.9965633|       -0.9929634|       -0.9878910|           -0.9979831|           -0.9937930|           -0.9883652|                       -0.9915104|                          -0.9915104|                           -0.9926166|               -0.9890438|                   -0.9941920|               -0.9986920|               -0.9902834|               -0.9860446|                   -0.9966502|                   -0.9861922|                   -0.9885855|       -0.9966844|       -0.9931874|       -0.9897666|                       -0.9933331|                               -0.9922984|                   -0.9898086|                       -0.9935218| SITTING             |
-| 3388 |               0.2014525|              -0.0018535|              -0.0978237|                  0.9650309|                 -0.1953691|                  0.0050768|                   0.2227785|                   0.4934546|                   0.6180554|      -0.0383791|       0.0689081|       0.0864299|          -0.1490693|           0.0651445|           0.1703516|                      -0.1023518|                         -0.1023518|                          -0.2134786|              -0.2686303|                  -0.2358814|              -0.3092796|               0.1533817|              -0.0931926|                  -0.3287154|                   0.0271605|                  -0.2771182|      -0.2495057|      -0.1446811|      -0.3076421|                      -0.1336396|                              -0.0270099|                  -0.1552074|                      -0.1005531|               -0.3101708|                0.0855670|                0.0036746|                  -0.9792305|                  -0.9648589|                  -0.9359428|                   -0.3102988|                    0.0595820|                   -0.2703007|       -0.4349007|       -0.2041228|       -0.4097659|           -0.0596867|           -0.1492048|           -0.3828846|                       -0.1864813|                          -0.1864813|                            0.0061809|               -0.1743482|                   -0.0526157|               -0.3104483|               -0.0217556|               -0.0222125|                   -0.3524885|                    0.0228658|                   -0.2630852|       -0.4940823|       -0.2488602|       -0.5013086|                       -0.3441828|                                0.0436575|                   -0.3349379|                       -0.0565752| WALKING             |
-| 1327 |               0.2489884|              -0.0544847|              -0.0944294|                  0.9203518|                 -0.3073838|                  0.0924766|                   0.2528133|                  -0.1765338|                   0.0981977|      -0.3163658|       0.0576822|      -0.0328792|           0.1566470|          -0.5317572|          -0.0834874|                       0.0843360|                          0.0843360|                          -0.1456746|               0.3257489|                  -0.3035051|              -0.1904563|               0.5040503|              -0.3132593|                  -0.3940445|                   0.1985126|                  -0.4565842|       0.1790797|      -0.0553450|       0.3249236|                       0.1237948|                              -0.0874203|                   0.0726363|                      -0.3225287|               -0.0699876|                0.5945063|               -0.2986395|                  -0.8980568|                  -0.8649245|                  -0.9556897|                   -0.3197458|                    0.3437091|                   -0.4478459|        0.2116700|       -0.0342687|        0.2082947|           -0.2024597|           -0.4031385|            0.0743387|                        0.1250094|                           0.1250094|                           -0.0198592|                0.2443429|                   -0.2619004|               -0.0265258|                0.5400519|               -0.3465873|                   -0.3037865|                    0.4126803|                   -0.4387969|        0.2043929|       -0.0282010|        0.0570141|                       -0.0494284|                                0.0601567|                    0.1461596|                       -0.2363387| WALKING\_DOWNSTAIRS |
-| 1988 |               0.2854892|              -0.0245759|              -0.1407388|                  0.9633119|                 -0.0732867|                  0.1518212|                   0.0725478|                   0.0131527|                  -0.0050231|      -0.0643829|      -0.0900606|       0.0716028|          -0.0760970|          -0.0316490|          -0.0365232|                      -0.9612810|                         -0.9612810|                          -0.9698204|              -0.9125463|                  -0.9755456|              -0.9820816|              -0.9399298|              -0.9806668|                  -0.9737299|                  -0.9497069|                  -0.9789773|      -0.9206760|      -0.9698864|      -0.9443624|                      -0.9688901|                              -0.9675073|                  -0.9504332|                      -0.9789416|               -0.9862653|               -0.9364091|               -0.9838092|                  -0.9957976|                  -0.9755042|                  -0.9645545|                   -0.9700466|                   -0.9507608|                   -0.9812226|       -0.9142898|       -0.9642695|       -0.9358738|           -0.9604653|           -0.9845739|           -0.9713901|                       -0.9696316|                          -0.9696316|                           -0.9656954|               -0.9329163|                   -0.9801627|               -0.9883082|               -0.9375129|               -0.9865332|                   -0.9687234|                   -0.9557408|                   -0.9819199|       -0.9137400|       -0.9612730|       -0.9389043|                       -0.9737145|                               -0.9618198|                   -0.9331880|                       -0.9829551| STANDING            |
-| 733  |               0.2133831|               0.0095161|              -0.1329670|                  0.8487489|                  0.0718207|                 -0.3888863|                  -0.0029755|                  -0.1854872|                   0.3802198|      -0.4983933|      -0.1622106|       0.4104517|           0.1246656|           0.0789964|          -0.1327449|                      -0.1713456|                         -0.1713456|                          -0.3546365|               0.0408822|                  -0.6297863|              -0.2807332|              -0.4884504|              -0.2208918|                  -0.3504118|                  -0.6048092|                  -0.5291392|      -0.3675981|      -0.3324264|      -0.4424164|                      -0.1613058|                              -0.3343107|                  -0.5356389|                      -0.6683590|               -0.2086392|               -0.4835583|               -0.0194526|                  -0.9561148|                  -0.9428752|                  -0.8719860|                   -0.2284905|                   -0.6126283|                   -0.5684267|       -0.2874735|       -0.1707592|       -0.4288116|           -0.6558093|           -0.6359598|           -0.6324239|                       -0.1553832|                          -0.1553832|                           -0.3796033|               -0.4020536|                   -0.6828926|               -0.1818801|               -0.5130017|                0.0074233|                   -0.1766727|                   -0.6512555|                   -0.6055961|       -0.2787328|       -0.0907573|       -0.4765136|                       -0.2832004|                               -0.4462601|                   -0.4198725|                       -0.7263140| WALKING\_UPSTAIRS   |
+Let's finally save our clean data-sets to `*.csv` files:
+
+``` r
+write.csv(all_data, "./tidy_data/activity_data.csv")
+write.csv(averages_data, "./tidy_data/activity_averages_data.csv")
+```
