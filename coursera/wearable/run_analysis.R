@@ -96,7 +96,7 @@ train_data <- cleanup_data(train_data, train_labels, train_subjects)
 all_data <- rbind(test_data, train_data)
 
 #
-# Compute Averages per Activity and Subject
+# Compute Averages per Subject and Activity
 #
 
 averages_data <- all_data %>% group_by(SubjectID, ActivityName) %>% summarise_each(funs(mean))
