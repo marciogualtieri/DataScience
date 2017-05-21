@@ -381,7 +381,7 @@ averages_data <- all_data %>% group_by(SubjectID, ActivityName) %>% summarise_ea
 sample_data_frame(averages_data, 6)
 ```
 
-## Saving Resulting Data to Disk
+## Saving the Resulting Data to Disk
 
 Let's finally save our clean data-sets to `*.txt` files:
 
