@@ -88,7 +88,7 @@ A Fast Fourier Transform for the given sampling frequency of 50 Hz and with a nu
 
 Finally, these measurements were used to estimate variables for mean, standard deviation, median, max, min, etc. You will find the full list of estimated variables in `features_info.txt`. These estimated variables comprise the data for the given raw training and testing data-sets.
 
-For the purpose of this data exploration, we are not interested in the pre-processed data, thus, we're going to work with the following files:
+For the purpose of this data exploration, we are not interested in the pre-processed data, thus we're going to work with the following files:
 
 |File                   |Commentary                                                |
 |-----------------------|----------------------------------------------------------|
