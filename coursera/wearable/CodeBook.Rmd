@@ -147,7 +147,21 @@ train_labels <- read.table("./data/UCI HAR Dataset/train/y_train.txt", stringsAs
 dim(train_labels)
 ```
 
-Later on we will bind feature and label data together in a single data-set.
+#### Subject Data
+
+In the raw data-set the subjects are separated in a different file:
+
+```{r}
+test_subjects <- read.table("./data/UCI HAR Dataset/test/subject_test.txt", stringsAsFactors = FALSE)
+dim(test_labels)
+```
+
+```{r}
+train_subjects <- read.table("./data/UCI HAR Dataset/train/subject_train.txt", stringsAsFactors = FALSE)
+dim(train_labels)
+```
+
+Later on we will bind feature, label and subject data together in a single data-set.
 
 #### Activity Names Data
 
@@ -161,7 +175,7 @@ activities
 Let's create a list of all variables, which include the features names and label name:
 
 ```{r}
-variables <- c(feature_names, "ActivityID")
+variables <- c(feature_names, "ActivityID", "SubjectID")
 ```
 
 The variable name for activity is my own choice. I believe is descriptive enough.
@@ -176,7 +190,7 @@ sample(mean_variables, 6)
 sample(std_variables, 6)
 ```
 
-### Binding Feature and Label Data Together
+### Binding Feature, Label and Subject Data Together
 
 ```{r}
 add_labels <- function(data, labels) {
@@ -184,7 +198,13 @@ add_labels <- function(data, labels) {
   data
 }
 
+add_subjects <- function(data, subjects) {
+  data <- cbind(data, subjects)
+  data
+}
+
 test_data <- add_labels(test_data, test_labels)
+test_data <- add_subjects(test_data, test_subjects)
 dim(test_data)
 ```
 
@@ -205,11 +225,11 @@ sample(names(test_data), 6)
 ### Filtering Out Non-Pertinent Variables
 
 ```{r}
-select_mean_and_std_variables <- function(data)
-  data[, c(mean_variables, std_variables, "ActivityID")]
+select_pertinent_variables <- function(data)
+  data[, c(mean_variables, std_variables, "ActivityID", "SubjectID")]
 
 
-test_data <- select_mean_and_std_variables(test_data)
+test_data <- select_pertinent_variables(test_data)
 names(test_data)
 ```
 
@@ -263,10 +283,11 @@ We also remove "ActivityID", given that "ActivityName" is better suited for data
 Let's create a single function which puts every single transformation we've made together:
 
 ```{r}
-cleanup_data <- function(data, labels) {
+cleanup_data <- function(data, labels, subjects) {
   data <- add_labels(data, labels)
+  data <- add_subjects(data, subjects)
   data <- add_variable_names(data)
-  data <- select_mean_and_std_variables(data)
+  data <- select_pertinent_variables(data)
   data <- normalize_variable_names(data)
   add_activity_name_variable(data, activities)
 }
@@ -275,7 +296,7 @@ cleanup_data <- function(data, labels) {
 Which we can apply to the training data-set as well:
 
 ```{r}
-train_data <- cleanup_data(train_data, train_labels)
+train_data <- cleanup_data(train_data, train_labels, train_subjects)
 sample_data_frame(train_data, 6)
 ```
 
@@ -348,12 +369,12 @@ The following tables describe all the variables in the clean data-set:
 |[tf]BodyGyroSigma[XYZ]           |Standard Deviation of each component (X, Y & Z) of the angular velocity due to body motion.     |
 |[tf]BodyGyroMagnitudeSigma       |Standard Deviation of the magnitude (modulus) of the angular velocity vector due to body motion.|
 
-## Computing Averages per Activity
+## Computing Averages per Activity and Subject
 
-The following data-set has been grouped by activity and all columns summarised into their respective means:
+The following data-set has been grouped by subject and activity and all columns summarised into their respective means:
 
 ```{r}
-averages_data <- all_data %>% group_by(ActivityName) %>% summarise_each(funs(mean))
+averages_data <- all_data %>% group_by(SubjectID, ActivityName) %>% summarise_each(funs(mean))
 averages_data
 ```
 
