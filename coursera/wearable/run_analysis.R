@@ -49,22 +49,15 @@ variables <- c(feature_names, "ActivityID", "SubjectID")
 mean_variables <- grep("mean\\(\\)", variables, value = TRUE)
 std_variables <- grep("std\\(\\)", variables, value = TRUE)
 
-# Bind Feature, Label and Subject Data Together
-test_data <- cbind(test_data, test_labels)
-test_data <- cbind(test_data, test_subjects)
-
 # Add variable names to loaded data-set 
 add_variable_names <- function(data) {
   names(data) <- variables
   data
 }
-test_data <- add_variable_names(test_data)
-
 
 # Filter out non-pertinent variables
 select_pertinent_variables <- function(data)
   data[, c(mean_variables, std_variables, "ActivityID", "SubjectID")]
-test_data <- select_pertinent_variables(test_data)
 
 # Normalize variable names
 normalize_variable_names <- function(data) {
@@ -80,8 +73,6 @@ sample_data_frame <- function(data, size) {
   sample_index <- sample(1:nrow(data), size)
   return(data[sample_index, ])
 }
-test_data <- normalize_variable_names(test_data)
-
 
 # Join feature and label data with activity data
 names(activities) <- c("ActivityID", "ActivityName")
@@ -90,7 +81,6 @@ add_activity_name_variable <- function(data, activities) {
   data <- data[, !names(data) %in% c("ActivityID")]
   data
 }
-test_data <- add_activity_name_variable(test_data, activities)
 
 # Putting all transformations together in a single function
 cleanup_data <- function(data, labels, subjects) {
@@ -102,7 +92,8 @@ cleanup_data <- function(data, labels, subjects) {
   add_activity_name_variable(data, activities)
 }
 
-# Apply the transformation to the training data-set
+# Apply the transformation to the data-sets
+test_data <- cleanup_data(test_data, test_labels, test_subjects)
 train_data <- cleanup_data(train_data, train_labels, train_subjects)
 
 # Bind training and testing data together
