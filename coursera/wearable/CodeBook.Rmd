@@ -180,7 +180,7 @@ Let's create a list of all variables, which include the features names and label
 variables <- c(feature_names, "ActivityID", "SubjectID")
 ```
 
-The variable name for activity is my own choice. I believe is descriptive enough.
+The variable names for subject and activity are my own choice. I believe they are descriptive enough.
 
 Let's also create a list of the variables we are interested in exploring (means and standard deviations at the moment):
 
