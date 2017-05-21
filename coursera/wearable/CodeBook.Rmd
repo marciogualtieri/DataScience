@@ -327,9 +327,10 @@ The following tables describe all the variables in the clean data-set:
 
 <br/>
 
-|Activity Variable|Description                                                                                                 |
-|-----------------|------------------------------------------------------------------------------------------------------------|
-|ActivityName     |A descriptive name for the activity, i.e.: LAYING, SITTING, WALKING, WALKING_UPSTAIRS or WALKING_DOWNSTAIRS.|
+|ID Variables|Description                                                                                                 |
+|------------|------------------------------------------------------------------------------------------------------------|
+|ActivityName|A descriptive name for the activity, i.e.: LAYING, SITTING, WALKING, WALKING_UPSTAIRS or WALKING_DOWNSTAIRS.|
+|SubjectID   |An integer indentifier for the human subjected to the experiment.                                           |
 
 |Acceleration Mean Variables         |Description                                                               |
 |------------------------------------|--------------------------------------------------------------------------|
@@ -375,7 +376,7 @@ The following data-set has been grouped by subject and activity and all columns 
 
 ```{r}
 averages_data <- all_data %>% group_by(SubjectID, ActivityName) %>% summarise_each(funs(mean))
-averages_data
+sample_data_frame(averages_data, 6)
 ```
 
 ## Saving Resulting Data to Disk
