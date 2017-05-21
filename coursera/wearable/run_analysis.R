@@ -69,10 +69,6 @@ normalize_variable_names <- function(data) {
   names(data) <- gsub("Mag", "Magnitude", names(data))
   data
 }
-sample_data_frame <- function(data, size) {
-  sample_index <- sample(1:nrow(data), size)
-  return(data[sample_index, ])
-}
 
 # Join feature and label data with activity data
 names(activities) <- c("ActivityID", "ActivityName")
