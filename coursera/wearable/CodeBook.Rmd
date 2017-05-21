@@ -386,7 +386,7 @@ sample_data_frame(averages_data, 6)
 Let's finally save our clean data-sets to `*.txt` files:
 
 ```{r}
-dir.create("./tidy_data")
+suppressWarnings(dir.create("./tidy_data"))
 write.table(all_data, "./tidy_data/activity_data.txt", row.name = FALSE)
 write.table(averages_data, "./tidy_data/activity_averages_data.txt", row.name = FALSE )
 ```
