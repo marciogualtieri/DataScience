@@ -90,7 +90,7 @@ Finally, these measurements were used to estimate variables for mean, standard d
 
 For the purpose of this data exploration, we are not interested in the pre-processed data, thus we're going to work with the following files:
 
-|File                   |Commentary                                                |
+|File                   |Description                                               |
 |-----------------------|----------------------------------------------------------|
 |train/X_train.txt      |training feature data.                                    |
 |train/y_train.txt      |training label data.                                      |
