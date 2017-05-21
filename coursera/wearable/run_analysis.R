@@ -50,16 +50,8 @@ mean_variables <- grep("mean\\(\\)", variables, value = TRUE)
 std_variables <- grep("std\\(\\)", variables, value = TRUE)
 
 # Bind Feature, Label and Subject Data Together
-add_labels <- function(data, labels) {
-  data <- cbind(data, labels)
-  data
-}
-add_subjects <- function(data, subjects) {
-  data <- cbind(data, subjects)
-  data
-}
-test_data <- add_labels(test_data, test_labels)
-test_data <- add_subjects(test_data, test_subjects)
+test_data <- cbind(test_data, test_labels)
+test_data <- cbind(test_data, test_subjects)
 
 # Add variable names to loaded data-set 
 add_variable_names <- function(data) {
@@ -102,8 +94,8 @@ test_data <- add_activity_name_variable(test_data, activities)
 
 # Putting all transformations together in a single function
 cleanup_data <- function(data, labels, subjects) {
-  data <- add_labels(data, labels)
-  data <- add_subjects(data, subjects)
+  data <- cbind(data, labels)
+  data <- cbind(data, subjects)
   data <- add_variable_names(data)
   data <- select_pertinent_variables(data)
   data <- normalize_variable_names(data)
@@ -119,7 +111,7 @@ all_data <- rbind(test_data, train_data)
 # Compute Averages per Activity
 averages_data <- all_data %>% group_by(ActivityName) %>% summarise_each(funs(mean))
 
-# Save data to disk
+# Save output data to disk
 suppressWarnings(dir.create("./tidy_data"))
 write.table(all_data, "./tidy_data/activity_data.txt", row.name = FALSE)
 write.table(averages_data, "./tidy_data/activity_averages_data.txt", row.name = FALSE)

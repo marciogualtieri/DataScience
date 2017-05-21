@@ -195,18 +195,8 @@ sample(std_variables, 6)
 ### Binding Feature, Label and Subject Data Together
 
 ```{r}
-add_labels <- function(data, labels) {
-  data <- cbind(data, labels)
-  data
-}
-
-add_subjects <- function(data, subjects) {
-  data <- cbind(data, subjects)
-  data
-}
-
-test_data <- add_labels(test_data, test_labels)
-test_data <- add_subjects(test_data, test_subjects)
+test_data <- cbind(test_data, test_labels)
+test_data <- cbind(test_data, test_subjects)
 dim(test_data)
 ```
 
@@ -286,8 +276,8 @@ Let's create a single function which puts every single transformation we've made
 
 ```{r}
 cleanup_data <- function(data, labels, subjects) {
-  data <- add_labels(data, labels)
-  data <- add_subjects(data, subjects)
+  data <- cbind(data, labels)
+  data <- cbind(data, subjects)
   data <- add_variable_names(data)
   data <- select_pertinent_variables(data)
   data <- normalize_variable_names(data)
@@ -381,7 +371,7 @@ averages_data <- all_data %>% group_by(SubjectID, ActivityName) %>% summarise_ea
 sample_data_frame(averages_data, 6)
 ```
 
-## Saving the Resulting Data to Disk
+## Saving the Output Data to Disk
 
 Let's finally save our clean data-sets to `*.txt` files:
 
