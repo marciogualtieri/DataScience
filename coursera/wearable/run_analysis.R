@@ -99,10 +99,16 @@ train_data <- cleanup_data(train_data, train_labels, train_subjects)
 # Bind training and testing data together
 all_data <- rbind(test_data, train_data)
 
-# Compute Averages per Activity
-averages_data <- all_data %>% group_by(ActivityName) %>% summarise_each(funs(mean))
+#
+# Compute Averages per Activity and Subject
+#
 
+averages_data <- all_data %>% group_by(SubjectID, ActivityName) %>% summarise_each(funs(mean))
+
+#
 # Save output data to disk
+#
+
 suppressWarnings(dir.create("./tidy_data"))
 write.table(all_data, "./tidy_data/activity_data.txt", row.name = FALSE)
 write.table(averages_data, "./tidy_data/activity_averages_data.txt", row.name = FALSE)
