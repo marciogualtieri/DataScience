@@ -172,7 +172,7 @@ activities <- read.table("./data/UCI HAR Dataset/activity_labels.txt")
 activities
 ```
 
-### Pertinent Variables (Mean, Standard Deviation & Activity)
+### Pertinent Variables (Mean, Standard Deviation, Activity & Subject)
 
 Let's create a list of all variables, which include the features names and label name:
 
