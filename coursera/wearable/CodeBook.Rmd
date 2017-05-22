@@ -46,6 +46,8 @@ download_zipped_data("https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfil
                      "./data")
 ```
 
+This file has been downloaded from [UCI's Machine Learning Repository](http://archive.ics.uci.edu/ml/). You will find the original data [here](http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones).
+
 ### Data Files
 
 Here's a list of the unzipped files:
