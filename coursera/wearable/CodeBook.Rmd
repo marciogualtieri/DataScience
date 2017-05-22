@@ -7,7 +7,7 @@ output:
     df_print: "kable"
 ---
 
-<h1>Wearable Computing: Human Activity Recognition Using Smartphones</h1>
+<h1>Data Cleaning: Wearable Computing, Human Activity Recognition Using Smartphones</h1>
 <br/>
 
 ## Installing the Required Packages

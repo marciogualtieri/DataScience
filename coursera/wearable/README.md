@@ -1,4 +1,4 @@
-# Wearable Computing: Human Activity Recognition Using Smartphones
+# Data Cleaning: Wearable Computing, Human Activity Recognition Using Smartphones
 
 This project uses the [R language](https://www.r-project.org/about.html) to perform data cleaning on raw data-sets comprised of motion sensor data. For information on the original raw data and transformation steps performed to obtain the final clean data-sets refer to [`CodeBook.md`](./CodeBook.md). This code book is rendered using [knitr](https://yihui.name/knitr/) from the source file [`CodeBook.Rmd`](./CodeBook.Rmd), which is a [R notebook](http://rmarkdown.rstudio.com/r_notebooks.html).
 
