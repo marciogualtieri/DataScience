@@ -10,6 +10,9 @@ output:
 <h1>Data Cleaning: Wearable Computing, Human Activity Recognition Using Smartphones</h1>
 <br/>
 
+<h3>by Marcio Gualtieri</h3>
+<br/>
+
 ## Installing the Required Packages
 
 You might need to install the following packages if you don't already have them:
