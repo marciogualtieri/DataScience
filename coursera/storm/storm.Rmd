@@ -1,0 +1,639 @@
+---
+title: 'Storm Data Analysis: Fatalities, Injuries and Damages of Severe Weather Events'
+author: "Marcio Gualtieri"
+output:
+  md_document:
+    df_print: kable
+    toc: yes
+    toc_depth: 4
+    variant: markdown_github
+  html_document:
+    css: ./styles/style.css
+    df_print: kable
+    toc: yes
+    toc_depth: 4
+---
+
+## Installing the Required Packages
+
+You might need to install the following packages if you don't already have them:
+
+```{r, eval = FALSE}
+install.packages("ktable")
+install.packages("plyr")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("gridExtra")
+install.packages("lubridate")
+install.packages("reshape2")
+install.packages("data.table")
+install.packages("R.utils")
+```
+
+Just run the commands for the packages you need or run the whole chunk before you run the remaining ones in this notebook.
+
+## Importing the Required Packages
+
+Once the libraries are installed, they need to be loaded as follows:
+
+```{r}
+suppressMessages(library(plyr))       # Data frame manipulation
+suppressMessages(library(dplyr))
+suppressMessages(library(ggplot2))    # Plotting
+suppressMessages(library(gridExtra))
+suppressMessages(library(grid))
+suppressMessages(library(lubridate))  # Date manipulation
+suppressMessages(library(reshape2))   # Data frame manipulation
+suppressMessages(library(data.table))
+suppressMessages(library(R.utils))    # File compression utils
+```
+
+## Enabling Caching
+
+The raw data-set is pretty big, which might make rendering the output slow, so let's enable knitr's global caching:
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+## Setting a Seed
+
+Just so this notebooḱ's data-set samplings are reproducible:
+
+```{r}
+set.seed(123)
+```
+
+## Synopsis
+
+The [National Oceanic and Atmospheric Administration (NOAA)](https://www.ncdc.noaa.gov/) makes available a [database](https://www.ncdc.noaa.gov/stormevents/), in which this organization keeps track of the occurence of unusual weather phenomena that impact human life (i.e., cause signifcant loss of lives, injuries, property and crop damages, etc).
+
+The purpose of this analysis is to identify the top weather phenomena ("Storm Data Events"") in terms of human health harm and economic impact.
+
+The raw data-set provides individual records for each event with the associated figures for their impact and time of occurence among other information, thus our primary goal is to aggregate such data by type of event and extract relevant insights from such data aggregations in the form of tables and plots.
+
+## Data Processing
+
+### Downloading the Raw Data
+
+```{r}
+read_bz2_csv <- function(url) {
+  temp_bz2_file <- tempfile()
+  temp_csv_file <- tempfile()
+  download.file(url, temp_bz2_file, quiet = TRUE)
+  data <- as.data.frame(fread(bunzip2(temp_bz2_file, temp_csv_file), stringsAsFactors = FALSE, encoding = "Latin-1"))
+  unlink(temp_bz2_file)
+  unlink(temp_csv_file)
+  data
+}
+
+storm_data <- read_bz2_csv("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2")
+sample_n(storm_data, 6)
+```
+
+The input file's original encoding "Latin1" causes problems for some R string operations, thus we are going to convert the string variables we need to work with to "ASCII":
+
+```{r}
+storm_data$PROPDMGEXP <- iconv(storm_data$PROPDMGEXP, from = "Latin1", to = "ASCII", sub = "")
+storm_data$CROPDMGEXP <- iconv(storm_data$CROPDMGEXP, from = "Latin1", to = "ASCII", sub = "")
+```
+
+Let's see how many records we have:
+
+```{r}
+dim(storm_data)
+```
+
+Our raw data-set have `r nrow(storm_data)` records and `r ncol(storm_data)` variables.
+
+### Raw Data Variables Types
+
+Follows a full list of variables and their correspondent types:
+
+```{r}
+str(storm_data)
+```
+
+### Raw Data Variables Description
+
+You will find some documentation on this data-set in the following links:
+
+- [National Weather Service Storm Data Documentation][1]
+- [National Climatic Data Center Storm Events FAQ][2]
+
+[1]: https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf  "National Weather Service Storm Data Documentation"
+[2]: https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf  "National Climatic Data Center Storm Events FAQ"
+
+Follow short descriptions of these variables based on information taken from these sources:
+
+|Variable  |Description                                                                                                                   |
+|----------|------------------------------------------------------------------------------------------------------------------------------|
+|STATE__   |Doesn't seem to be a state ID, given that the range is from 1 to 94.                                                          |
+|BGN_DATE  |Date the event started to have an impact. A string with format "%m/%d/%Y 0:00:00".                                            |
+|BGN_TIME  |Time the event started to have an impact. A string with no particular format (probably data merged from different sources).   |
+|TIME_ZONE |Time zone, e.g., "EST", "PST", etc.                                                                                           |
+|COUNTY    |County ID (integer).                                                                                                          |
+|COUNTYNAME|County name, all capital letters.                                                                                             |
+|STATE     |U.S. state code, e.g., "NY", "CA", etc.                                                                                       |
+|EVTYPE    |Event type as a string. Shows duplications such as "COLD", "Cold", "Cold" and "Cold Temperature". Will require cleanup.       |
+|BGN_RANGE |?                                                                                                                             |
+|BGN_AZI   |Azimuth of where the event started ([cardinal point](https://en.wikipedia.org/wiki/Points_of_the_compass#32_cardinal_points)).|
+|BGN_LOCATI|Location where the event originated, i.e., town or city.                                                                      |
+|END_DATE  |Date the event ended. Same format as BGN_DATE                                                                                 |
+|END_TIME  |Time the event ended. Same format as BGN_TIME                                                                                 |
+|COUNTY_END|Zero for all records.                                                                                                         |
+|COUNTYENDN|`NA` for all records.                                                                                                         |
+|END_RANGE |?                                                                                                                             |
+|END_AZI   |Azimuth of where the event ended ([cardinal point](https://en.wikipedia.org/wiki/Points_of_the_compass#32_cardinal_points)).  |
+|END_LOCATI|Location where the event ended, i.e., town or city.                                                                           |
+|LENGTH    |Length (of ? in units ?).                                                                                                     |
+|WIDTH     |Width (of ? in units ?).                                                                                                      |
+|F         |?                                                                                                                             |
+|MAG       |Magnitude of the event as an integer number.                                                                                  |
+|FATALITIES|Number of fatalities.                                                                                                         |
+|INJURIES  |Number of injuries.                                                                                                           |
+|PROPDMG   |Costs in property damages.                                                                                                    |
+|PROPDMGEXP|Scale of the costs in property damages, e.g, H/h(undred), K/k(thousand), M/m(illion) or B/b(illion).                          |
+|CROPDMG   |Cost on crop damages.                                                                                                         |
+|CROPDMGEXP|Scale of the costs in crop damages, e.g, H/h(undred), K/k(thousand), M/m(illion) or B/b(illion).                              |
+|WFO       |Code of the WFO (Weather Forecast Office).                                                                                    |
+|STATEOFFIC|State office (that collected the data?) location as a string.                                                                 |
+|ZONENAMES |Zone areas affected by the event as text, e.g., "LAUDERDALE - MARION - WINSTON - CLEBURNE - ST. CLAIR".                       |
+|LATITUDE  |Latitude in DMS (Degrees, Minutes and Seconds). An integer following the regex "[0-9]{1,2}[0-9]{2}[0-9]{2}"                   |
+|LONGITUDE |Longitude in DMS (Degrees, Minutes and Seconds). Same format as LATITUDE                                                      |
+|LATITUDE_E|Duplicated field. Some times it might be missing (zero)                                                                       |
+|LONGITUDE_|Duplicated field.                                                                                                             |
+|REMARKS   |A description of the event in words.                                                                                          |
+|REFNUM    |Reference number (for ?)                                                                                                      |
+
+Given that the documentation provided with the data-set doesn't contain variable names and descriptions, I'm unsure about some of the variables meaning. I indicate that in the description column when that's the case.
+
+It's not always possible to fill all missing gaps of information in the documentation, but we need to start somewhere. It seems like we can attempt to answer the questions we are supposed to answer with the information we have so far and we can always come back and add more information to the notebook (as we explore the data-set and get more familiar with the domain of knowledge, gets easier to fill-in gaps).
+
+From the questions we need to answer, the relevant variables seem to be:
+
+|Variable  |Description                                                                                                                   |
+|----------|------------------------------------------------------------------------------------------------------------------------------|
+|EVTYPE    |Event type as a string. Shows duplications such as "COLD", "Cold", "Cold" and "Cold Temperature". Will require cleanup.       |
+|PROPDMG   |Costs in property damages.                                                                                                    |
+|PROPDMGEXP|Scale of the costs in property damages, e.g, H/h(undred), K/k(thousand), M/m(illion) or B/b(illion).                          |
+|CROPDMG   |Cost on crop damages.                                                                                                         |
+|CROPDMGEXP|Scale of the costs in crop damages, e.g, H/h(undred), K/k(thousand), M/m(illion) or B/b(illion).                              |
+|FATALITIES|Number of fatalities.                                                                                                         |
+|INJURIES  |Number of injuries.                                                                                                           |
+
+Some of variables fields will require some data cleaning. We will do that in the following section.
+
+### Data Cleaning
+
+From a rough inspection, we seem to need to process the following variables:
+
+PROPDMGEXP` and `CROPDMGEXP`, the costs in property and crop damages respectively, can be pretty big numbers (order of billions of U.S. Dollars in some cases) and for this reason, they are represented as a coefficient and an exponent. e.g.:
+
+- $\text{Property Damage} = PROPDMG \times 10^{PROPDMGEXP}$
+
+- $\text{Crop Damage} = CROPDMG \times 10^{CROPDMGEXP}$.
+
+This makes sense for the user inputing this data, but is not adequate for our needs. On top of that these exponent variables are strings and can be "H"(undered), "K"(thousand), "M"(illion), etc.
+
+`EVTYPE`, the event type, doesn't conform to any standard (even free text is allowed, resulting in typos, i.e., "Avalance" instead of "Avalanche"), thus we will need to deduplicate this variable.
+
+#### `PROPDMGEXP` and `CROPDMGEXP`
+
+These variables represents the scale (or "EXP") for their respective amount variables (property damage and crop damage). They should be "H"(undred), "K"(thousand), "M"(illion) or "B"(illion) dollars. You will find other values though:
+
+```{r}
+unique(storm_data$PROPDMGEXP)
+```
+
+We could simply ignore the non-numeric ones that are not "H", "K", "M" or "B", but the numeric ones are harder to guess... There are two possibilities:
+
+1. User thought that it was an extra, less significant digit.
+2. User (nerd) thought it was an actual exponent of a power of ten, e.g. $10^{PROPDMGEXP}$.
+
+```{r}
+invalid_propdmgexp_data <- storm_data[grep("[^KMBH]", storm_data$PROPDMGEXP, ignore.case = TRUE),
+                                      c("EVTYPE", "PROPDMG", "PROPDMGEXP")]
+invalid_propdmgexp_data
+```
+
+Some of these values make more sense for the second possibility though:
+
+```{r}
+invalid_propdmgexp_data["208797", ]
+```
+
+Which probably means `US$ 200,000` and not `US$ 0.25`. It's unlikely that anyone would report damages worth that little...
+
+```{r}
+invalid_cropdmgexp_data <- storm_data[grep("[^HKMB]", storm_data$CROPDMGEXP, ignore.case = TRUE),
+                                      c("EVTYPE", "CROPDMG", "CROPDMGEXP")]
+invalid_cropdmgexp_data
+```
+
+`r nrow(invalid_cropdmgexp_data)` records is a very small number when compared with the total `r format(nrow(storm_data), scientific = FALSE, big.mark = ",")` and we, in principle, could simply amputate them, but given that I'm fairly confident that the numbers represent exponents of the power of ten, we are going to fix them:
+
+```{r}
+normalize_amount_scale <- function(amount_scale) {
+    amount_scale <- toupper(amount_scale)
+    amount_scale <- gsub("[^0-9HKMB|]|(^$)", "0", amount_scale)
+    amount_scale <- mapvalues(amount_scale,
+                              from = c("H", "K", "M", "B"),
+                              to = c(2, 3, 6, 9),
+                              warn_missing = FALSE)
+    as.numeric(amount_scale)
+}
+
+invalid_propdmgexp_data$PROPDMGEXP_NORM <- sapply(invalid_propdmgexp_data$PROPDMGEXP, normalize_amount_scale)
+invalid_propdmgexp_data[, c("PROPDMGEXP", "PROPDMGEXP_NORM")][1:6, ]
+```
+
+It seems to work just fine. Let's apply the transformation to the whole data-set:
+
+```{r}
+storm_data_dt <- data.table(storm_data)
+storm_data_dt <- storm_data_dt[, PROPDMGEXP_NORM := normalize_amount_scale(PROPDMGEXP)]
+storm_data_dt <- storm_data_dt[, CROPDMGEXP_NORM := normalize_amount_scale(CROPDMGEXP)]
+storm_data <- as.data.frame(storm_data_dt)
+```
+
+I'm using data tables due to performance. `sapply()` is much slower than data table's native operations. Given that not many people are familiar with data table's usage, I'm going to convert it back to data frame for the remaining operations in this notebook.
+
+Let's do some sanity check:
+
+```{r}
+storm_data %>%
+    filter(PROPDMGEXP %in% c("h", "H", 2, "k", "K", 3, "m", "M", "6", "b", "B", "9")) %>%
+    group_by(PROPDMGEXP) %>% summarize(total = n())
+```
+
+```{r}
+storm_data %>%
+    filter(PROPDMGEXP_NORM %in% c(2, 3, 6, 9)) %>% group_by(PROPDMGEXP_NORM) %>%
+    summarize(total = n())
+```
+
+The counts for the all normalized scales add-up after the transformation: "[hH]" and "2" were normalized to 2 and added up together. The same goes for "[kK]" and "3" and "[mM]" and "6".
+
+Let's now combine `PROPDM` and `CROPDM` and their correspondent exponents:
+
+```{r}
+storm_data <- mutate(storm_data, property_damages = PROPDMG * (10 ^ PROPDMGEXP_NORM))
+storm_data <- mutate(storm_data, crop_damages = CROPDMG * (10 ^ CROPDMGEXP_NORM))
+
+sample_n(select(storm_data, EVTYPE, PROPDMG, PROPDMGEXP, property_damages, CROPDMG, CROPDMGEXP, crop_damages), 6)
+```
+
+Let's also create a single variable which combines property and crop damages:
+
+```{r}
+storm_data <- mutate(storm_data, total_damages = (property_damages + crop_damages))
+
+sample_n(select(storm_data, EVTYPE, property_damages, crop_damages, total_damages), 6)
+```
+
+#### `EVTYPE`
+
+You will notice that the event type variable requires some deduplication. You will find typos:
+
+```{r}
+grep("^Avalanch?e", unique(storm_data$EVTYPE), value = TRUE, ignore.case = TRUE)
+```
+
+You will find duplicates:
+
+```{r}
+grep("^Cold$", unique(storm_data$EVTYPE), value = TRUE, ignore.case = TRUE)
+```
+
+You will find equivalent values:
+
+```{r}
+grep("(Severe|Extreme).*Cold", unique(storm_data$EVTYPE), value = TRUE, ignore.case = TRUE)
+```
+
+There is a fairly large number of unique event types in the data-set:
+
+```{r}
+length(unique(storm_data$EVTYPE))
+```
+
+According with "Table 1. Storm Data Event Table", on page 6 in the provided [documentation][1], there supposed to be only 48 event types:
+
+|Event Name             |Event Name              |
+|-----------------------|------------------------|
+|Astronomical Low Tide  |Hurricane (Typhoon)     |
+|Avalanche              |Ice Storm               |
+|Blizzard               |Lake-Effect Snow        |
+|Coastal Flood          |Lakeshore Flood         |
+|Cold/Wind Chill        |Lightning               |
+|Debris Flow            |Marine Hail             |
+|Dense Fog              |Marine High Wind        |
+|Dense Smoke            |Marine Strong Wind      |
+|Drought                |Marine Thunderstorm Wind|
+|Dust Devil             |Rip Current             |
+|Dust Storm             |Seiche                  |
+|Excessive Heat         |Sleet                   |
+|Extreme Cold/Wind Chill|Storm Surge/Tide        |
+|Flash Flood            |Strong Wind             |
+|Flood                  |Thunderstorm Wind       |
+|Frost/Freeze           |Tornado                 |
+|Funnel Cloud           |Tropical Depression     |
+|Freezing Fog           |Tropical Storm          |
+|Hail                   |Tsunami                 |
+|Heat                   |Volcanic Ash            |
+|Heavy Rain             |Waterspout              |
+|Heavy Snow             |Wildfire                |
+|High Surf              |Winter Storm            |
+|High Wind              |Winter Weather          |
+
+My guess is that the available documentation only covers one of the software applications used to collect this data. There are other applications which either use different labels for the event types or allow free typing (thus the typos we have found previously).
+
+Given the large amount the unique event types in the data, the process of deduplicating this variable could become quite involved, therefore I'm going to take a peek on the top event types in the data regarding property and crop damage costs first:
+
+Here's the total damages per event type without deduplcating `EVTYPE`:
+
+```{r}
+totals_per_event_type <- storm_data %>%
+    select(EVTYPE, total_damages, property_damages, crop_damages, INJURIES, FATALITIES) %>% 
+    group_by(EVTYPE) %>% 
+    summarize_each(funs(sum))
+
+dim(totals_per_event_type)
+```
+
+Here we have aggregated the data by `EVTYPE` without any deduplication the dimensions are consistent with the number of unique event types in the data.
+
+Let's get the top 100 event types regarding total damage cost:
+
+```{r}
+arrange(totals_per_event_type, desc(total_damages))$EVTYPE[1:100]
+```
+
+Only from a quick eye inspection, you might have noticed that some values require deduplication:
+
+- "THUNDERSTORM WIND", "THUNDERSTORM WINDS" and "TSTM WIND" are equivalent.
+- So are "FLASH FLOODING" and "FLASH FLOOD/FLOOD".
+
+Based on the table of event types given in the documentation, I have created the following regular expressions:
+
+```{r}
+event_type_patterns <- c(
+
+    "Astronomical.*Low.*Tide",                        "Hurricane|Typhoon",
+    "Avalanch?e",                                     "Ice.*Storm",
+    "Blizzard",                                       "Lake.*Effect.*Snow",
+    "Coastal.*Flood",                                 "Lakeshore.*Flood",
+    "Cold|(Wind.*Chill)",                             "Lightning",
+    "(Debris.*Flow)|Landslide",                       "Marine.*Hail",
+    "(Dense)?.*Fog",                                  "Marine.*High.*Wi?nds?",
+    "(Dense)?.*Smoke",                                "Marine.*Strong.*Wi?nds?",
+    "Drought",                                        "Marine.*Thunderstorm.*Winds?",
+    "Dust.*Devil",                                    "Rip.*Current",
+    "Dust.*Storm",                                    "Seiche",
+    "Excessive.*Heat",                                "Sleet",
+    "(Heavy|Severe|Excessive).*(Cold|(Wind.*Chill))", "Storm.*(Surge|Tide)",
+    "Flash.*Flo?o?d",                                 "(Strong)?.*(Wi?nds?)",
+    "Flo?o?d",                                        "(Thunderstorm|Thunderstrom|TSTM).*(Wi?nds?)?",
+    "Frost|Freeze",                                   "Tornado",
+    "Funnel.*Cloud",                                  "Tropical.*Depression",
+    "Freezing.*Fog",                                  "Tropical.*Storm",
+    "Hail",                                           "Tsunami",
+    "Heat",                                           "Volcanic.*Ash",
+    "(Heavy|Severe|Excessive)?.*(Rain|Wetness)",      "Waterspout",
+    "(Heavy|Severe|Excessive)?.*Snow",                 "(Wild|Forest).*fires?",
+    "(High.*Surf)|(Astronomical.*High.*Tide)",        "Winter.*Storm",
+    "High.*Wind",                                     "Winter.*Weather"
+
+    )
+
+event_type_patterns <- event_type_patterns[order(sapply(event_type_patterns, length), decreasing = TRUE)]
+```
+
+Note that I have sorted the list of patterns by pattern length in decreasing order. We will try to match the longest patterns first given that multiple patterns might match the same event type (e.g., "Cold" and "Extreme.*Cold"). They should do most of the deduplication for the event types that matter the most for the analysis (the top ones).
+
+Let's now deduplicate `EVTYPE`. Given that we will work with aggregate data, there's no need to duplicate every record in the Storm Data dataset- (with over 900K records), thus we will deduplicate the aggregated data instead:
+
+```{r}
+pattern_to_name <- function(pattern) {
+    name <- gsub("\\.\\*", " ", pattern)
+    name <- gsub("[()\\^\\?]", "", name)
+    gsub("\\|", "/", name)
+}
+
+deduplicate_event_type <- function(event_type) {
+    for (pattern in event_type_patterns) {
+        if(length(grep(pattern, event_type, ignore.case = TRUE)) > 0)
+            return(pattern_to_name(pattern))
+    }
+    event_type
+}
+
+totals_per_event_type$event_type <- sapply(totals_per_event_type$EVTYPE, deduplicate_event_type)
+
+deduplicated_totals_per_event_type <- totals_per_event_type %>%
+    select(event_type, total_damages, property_damages, crop_damages, FATALITIES, INJURIES) %>% 
+    group_by(event_type) %>% 
+    summarize_each(funs(sum))
+
+arrange(deduplicated_totals_per_event_type, desc(total_damages))$event_type[1:24]
+```
+
+I'm only going to show the top ten event types in my report. I believe that more than that will make the plots too clutered. Still, you might have noticed that the top 24 have been successfully deduplicated (they all belong to the event types in the table we showed earlier).
+
+Just for consistency I'm going to use lowercase for all variable names:
+
+```{r}
+names(deduplicated_totals_per_event_type) <- tolower(names(deduplicated_totals_per_event_type))
+str(deduplicated_totals_per_event_type)
+```
+
+## Clean Data-set
+
+Here's the processed data-set we are going to use for exploratory data analysis, `deduplicated_totals_per_event_type`, which holds the totals per event_type for damages, fatalities and injuries:
+
+|Variable        |Units      |Description                          |
+|----------------|-----------|-------------------------------------|
+|event_type      |Category   |Storm Data Event.                    |
+|property_damages|Dollars    |Total property damages for the event.|
+|crop_damages    |Dollars    |Total crop damages for the event.    |
+|total_damages   |Dollars    |Total damages for the event.         |
+|injuries        |Pure Number|Total injuries for the event.        |
+|fatalities      |Pure Number|Total fatalities for the event.      |
+
+```{r}
+str(deduplicated_totals_per_event_type)
+```
+
+## Exploratory Data Analysis
+
+### Which types of events are most harmful to population health?
+
+Taking the clean data-set and sorting by fatalities and injuries:
+
+```{r}
+top_health_harmful <- arrange(deduplicated_totals_per_event_type, desc(fatalities), desc(injuries))[1:10, ]
+top_health_harmful
+```
+
+Note that fatalities take precedence over injuries, thus "Heat" is more harmful than "Strong Wind/WND", even though the latter has more injuries.
+
+I want to show both fatalities and injuries in the same plot, thus, I'm going to melt these variables together:
+
+```{r}
+health_harmful_plot_data <- melt(select(top_health_harmful, event_type, fatalities, injuries), id = c("event_type"))
+names(health_harmful_plot_data) <- c("event_type", "metric", "count")
+
+health_harmful_plot_data
+```
+
+Here's a function to plot the correspondent barchart:
+
+```{r, fig.height = 8, fig.width = 12, fig.keep = "none"}
+
+plot_health_harmful_consequences <- function() {
+    ggplot(health_harmful_plot_data, aes(x = event_type, y = count, fill = metric)) +
+        geom_bar(stat="identity", position = "dodge") +
+        scale_x_discrete(limits = top_health_harmful$event_type) +
+        geom_text(aes(label = format(health_harmful_plot_data$count, big.mark = ",")), position = position_dodge(width = 0.9), vjust = -0.25) +
+        ggtitle("Top Health Harmful Storm Data Events Across the U.S.") +
+        ylab("Number of Fatalities / Injuries") +
+        scale_fill_manual(values = c("burlywood3", "burlywood1"), labels = c("Fatalities", "Injuries")) +
+        theme(axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5)) +
+        theme(plot.title = element_text(size = 18, face = "bold",
+                                        hjust = 0.5, margin = margin(b = 30, unit = "pt"))) +
+        theme(axis.title.x = element_blank()) +
+        theme(axis.title.y = element_text(size = 14, face="bold")) +
+        theme(panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+        theme(panel.border = element_rect(colour = "black", fill = NA, size = 0.5)) +
+        theme(strip.background = element_rect(fill = alpha("burlywood3", 0.3), color = "black", size = 0.5)) +
+        theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
+        theme(legend.title = element_blank())
+}
+
+plot_health_harmful_consequences()
+```
+
+I have made all of my plots in the exploratory data analysis section functions, so I can called them in the "Results" section. I believe these plots are the best output to managers and decision makers.
+
+### Which types of events have the greatest economic consequences?
+
+Taking the clean data-set and sorting the total damages (property plus crop damages):
+
+```{r}
+top_economic_consequences <- arrange(deduplicated_totals_per_event_type, desc(total_damages))[1:10, ]
+top_economic_consequences
+```
+
+The following code creates a barchart plot for the total damages:
+
+```{r, fig.height = 8, fig.width = 12, fig.keep = "none"}
+
+one_billion <- 1000000000
+
+total_damages_barchart <- ggplot(top_economic_consequences, aes(x = event_type, y = total_damages)) +
+    geom_bar(stat = "identity", fill = "burlywood1") +
+    scale_x_discrete(limits = top_economic_consequences$event_type) +
+    geom_text(aes(label = format(round(top_economic_consequences$total_damages / one_billion, 3), big.mark = ",", scientific = FALSE)),
+              position = position_dodge(width = 0.9), vjust=-0.25) +
+    ylab("Total Damage Costs in U.S. Billion Dollars") +
+    theme(plot.title = element_text(size = 16, face = "bold",
+                                    hjust = 0.5, margin = margin(b = 30, unit = "pt"))) +
+    theme(axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5)) +
+    theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
+    theme(axis.title.x = element_blank()) +
+    theme(axis.title.y = element_text(size = 12, face="bold")) +
+    theme(panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+    theme(panel.border = element_rect(colour = "black", fill = NA, size = 0.5)) +
+    theme(strip.background = element_rect(fill = alpha("burlywood3", 0.3), color = "black", size = 0.5)) +
+    theme(panel.spacing = unit(2, "lines"))
+
+total_damages_barchart
+```
+
+I want to show property and crop damages in the same plot, thus, I'm going to melt these variables together:
+
+```{r}
+damages_plot_data <- melt(select(top_economic_consequences, event_type, property_damages, crop_damages), id = c("event_type"))
+names(damages_plot_data) <- c("Event", "Metric", "Damages")
+
+damages_plot_data
+```
+
+The following code creates the barchart plot:
+
+```{r, fig.height = 8, fig.width = 12, fig.keep = "none"}
+
+property_and_crop_damages_plot <- ggplot(damages_plot_data, aes(x = Event, y = Damages, fill = Metric)) +
+    geom_bar(stat="identity", position = "dodge") +
+    scale_x_discrete(limits = top_economic_consequences$event_type) +
+    geom_text(aes(label = format(round(Damages / one_billion, 3), big.mark = ",")), position = position_dodge(width = 0.9), vjust = -0.25) +
+    ylab("Property / Crop Damage Costs in U.S. Billion Dollars") +
+    scale_fill_manual(values = c("burlywood4", "burlywood3"), labels = c("Property Damage", "Crop Damage")) +
+    theme(plot.title = element_text(size = 16, face = "bold",
+                                    hjust = 0.5, margin = margin(b = 30, unit = "pt"))) +
+    theme(axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5)) +
+    theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
+    theme(axis.title.x = element_blank()) +
+    theme(axis.title.y = element_text(size = 12, face="bold")) +
+    theme(panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+    theme(panel.border = element_rect(colour = "black", fill = NA, size = 0.5)) +
+    theme(strip.background = element_rect(fill = alpha("burlywood3", 0.3), color = "black", size = 0.5)) +
+    theme(legend.position = "bottom") +
+    theme(panel.spacing = unit(2, "lines")) +
+    theme(legend.title=element_blank())
+
+property_and_crop_damages_plot
+```
+
+Let's put everything together in a single plot:
+
+```{r, fig.height = 12, fig.width = 12, fig.keep = "none"}
+
+plot_economic_consequences <-function() {
+    grid.arrange(total_damages_barchart,
+             property_and_crop_damages_plot, ncol = 1,
+             top = textGrob("Top Economically Consequential Storm Data Events Accross the U.S.",
+                            gp = gpar(fontsize = 18, fontface = "bold")))
+}
+
+plot_economic_consequences()
+```
+
+## Results
+
+This section is destined to managers and decision makers. The following plots should show with clarity which weather phenomena (Storm Data Events) have the most impact on human health (fatalities / injures) and economy (property / crop damages). This should be the "TL;DR" section in this notebook.
+
+### Which types of events are most harmful to population health?
+
+The following barchart represents the top most harmful weather events for human life. Note that number of fatalities takes precedence over number of injuries, thus "Flash Flood" is considered more harmful than "Lightining", even though "Lightining" has a superior number of injuries:
+
+```{r, fig.height = 8, fig.width = 12}
+plot_health_harmful_consequences()
+```
+
+Literature is abundant on this phenomena and a quick web search can help to explain the proeminance of these events in the U.S.:
+
+- According with wikipedia, [Tornadoes are more common in the U.S. than any other country](https://en.wikipedia.org/wiki/Tornadoes_in_the_United_States), thus we can see them among the top 10.
+
+- According with [this article from NPR](http://www.npr.org/sections/thetwo-way/2016/07/22/487031278/heat-dome-causing-excessive-temperatures-in-much-of-u-s), the occurance of "Excessive Heat" and "Heat" events in the U.S. are explained by a phenomena named "heat dome":
+
+> "A heat dome occurs when high pressure in the upper atmosphere acts as a lid, preventing hot air from escaping. The air is forced to sink back to the surface, warming even further on the way. This phenomenon will result in dangerously hot temperatures that will envelop the nation throughout the week."
+
+It's clear from the bar plot that the impact of tornadoes largely overwhelms the effect of the remaining weather events.
+
+### Which types of events have the greatest economic consequences?
+
+```{r, fig.height = 12, fig.width = 12}
+plot_economic_consequences()
+```
+
+The top contender is "Flood". According with this article from [Business in Focus Magazine](http://www.businessinfocusmagazine.com/2013/09/the-impacts-of-flooding/):
+
+> Floods can have huge consequences for communities and for people. Immediate impacts can include loss of life, damaged infrastructure, and loss of livelihoods. The expenses of this natural disaster can cost billions of dollars and reduce productivity in areas affected by floods. However, floods can also rejuvenate areas that are affected by drought and restore soil fertility. When an area is devastated by a flood, people must be aware of the not only the short-term effects of it, but the long-term effects as well.
+
+"Hurricane/Typhoon" gets second place. The memory of [Hurricane Matthew](https://en.wikipedia.org/wiki/Hurricane_Matthew) should be fresh in your mind from the news (or actual experience!). This hurricane alone caused over 15 U.S. Billion Dollars in damages.
+
+Tornadoes show up again in the top 10 economically consequential weather events, taking the third place here.
+
+To wrap this section up, the plot at the bottom breaks the damages into property and crop, so their contributions can be analyzed separatedly.
