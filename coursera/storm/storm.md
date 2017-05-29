@@ -1,13 +1,14 @@
 -   [Installing the Required Packages](#installing-the-required-packages)
 -   [Importing the Required Packages](#importing-the-required-packages)
--   [Enabling Caching](#enabling-caching)
+-   [Knitr Settings](#knitr-settings)
 -   [Setting a Seed](#setting-a-seed)
 -   [Synopsis](#synopsis)
 -   [Data Processing](#data-processing)
     -   [Downloading the Raw Data](#downloading-the-raw-data)
     -   [Raw Data Variables Types](#raw-data-variables-types)
-    -   [Raw Data Variables Description](#raw-data-variables-description)
+    -   [Raw Data Variables Descriptions](#raw-data-variables-descriptions)
     -   [Data Cleaning](#data-cleaning)
+        -   [`BGN_DATE`](#bgn_date)
         -   [`PROPDMGEXP` and `CROPDMGEXP`](#propdmgexp-and-cropdmgexp)
         -   [`EVTYPE`](#evtype)
 -   [Clean Data-set](#clean-data-set)
@@ -54,28 +55,38 @@ suppressMessages(library(data.table))
 suppressMessages(library(R.utils))    # File compression utils
 ```
 
-Enabling Caching
-----------------
+Knitr Settings
+--------------
 
 The raw data-set is pretty big, which might make rendering the output slow, so let's enable knitr's global caching:
 
+``` r
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+I'm also enabling verbose for easier debugging:
+
+``` r
+knitr::opts_knit$set(verbose = TRUE)
+```
+
 Setting a Seed
 --------------
-
-Just so this notebooḱ's data-set samplings are reproducible:
 
 ``` r
 set.seed(123)
 ```
 
+Just to be sure the table samplings are reproducible.
+
 Synopsis
 --------
 
-The [National Oceanic and Atmospheric Administration (NOAA)](https://www.ncdc.noaa.gov/) makes available a [database](https://www.ncdc.noaa.gov/stormevents/), in which this organization keeps track of the occurence of unusual weather phenomena that impact human life (i.e., cause signifcant loss of lives, injuries, property and crop damages, etc).
+The [National Oceanic and Atmospheric Administration (NOAA)](https://www.ncdc.noaa.gov/) makes available a [database](https://www.ncdc.noaa.gov/stormevents/), in which this organization keeps track of the occurrence of unusual weather phenomena that impact human life (i.e., cause significant loss of lives, injuries, property and crop damages, etc).
 
 The purpose of this analysis is to identify the top weather phenomena ("Storm Data Events"") in terms of human health harm and economic impact.
 
-The raw data-set provides individual records for each event with the associated figures for their impact and time of occurence among other information, thus our primary goal is to aggregate such data by type of event and extract relevant insights from such data aggregations in the form of tables and plots.
+The raw data-set provides individual records for each event with the associated figures for their impact and time of occurrence among other information, thus our primary goal is to aggregate such data by type of event and extract relevant insights from such data aggregations in the form of tables and plots.
 
 Data Processing
 ---------------
@@ -87,7 +98,9 @@ read_bz2_csv <- function(url) {
   temp_bz2_file <- tempfile()
   temp_csv_file <- tempfile()
   download.file(url, temp_bz2_file, quiet = TRUE)
-  data <- as.data.frame(fread(bunzip2(temp_bz2_file, temp_csv_file), stringsAsFactors = FALSE, encoding = "Latin-1"))
+  data <- as.data.frame(fread(bunzip2(temp_bz2_file, temp_csv_file),
+                              stringsAsFactors = FALSE,
+                              encoding = "Latin-1"))
   unlink(temp_bz2_file)
   unlink(temp_csv_file)
   data
@@ -100,13 +113,14 @@ storm_data <- read_bz2_csv("https://d396qusza40orc.cloudfront.net/repdata%2Fdata
     Read 0.0% of 967216 rows
     Read 22.7% of 967216 rows
     Read 37.2% of 967216 rows
-    Read 49.6% of 967216 rows
-    Read 57.9% of 967216 rows
-    Read 71.3% of 967216 rows
+    Read 48.6% of 967216 rows
+    Read 54.8% of 967216 rows
+    Read 66.2% of 967216 rows
+    Read 73.4% of 967216 rows
     Read 78.6% of 967216 rows
-    Read 83.7% of 967216 rows
-    Read 93.1% of 967216 rows
-    Read 902297 rows and 37 (of 37) columns from 0.523 GB file in 00:00:11
+    Read 82.7% of 967216 rows
+    Read 89.9% of 967216 rows
+    Read 902297 rows and 37 (of 37) columns from 0.523 GB file in 00:00:13
 
 ``` r
 sample_n(storm_data, 6)
@@ -126,6 +140,7 @@ The input file's original encoding "Latin1" causes problems for some R string op
 ``` r
 storm_data$PROPDMGEXP <- iconv(storm_data$PROPDMGEXP, from = "Latin1", to = "ASCII", sub = "")
 storm_data$CROPDMGEXP <- iconv(storm_data$CROPDMGEXP, from = "Latin1", to = "ASCII", sub = "")
+storm_data$BG_DATE <- iconv(storm_data$BGN_DATE, from = "Latin1", to = "ASCII", sub = "")
 ```
 
 Let's see how many records we have:
@@ -134,9 +149,9 @@ Let's see how many records we have:
 dim(storm_data)
 ```
 
-    ## [1] 902297     37
+    ## [1] 902297     38
 
-Our raw data-set have 902297 records and 37 variables.
+Our raw data-set have 902297 records and 38 variables.
 
 ### Raw Data Variables Types
 
@@ -146,7 +161,7 @@ Follows a full list of variables and their correspondent types:
 str(storm_data)
 ```
 
-    ## 'data.frame':    902297 obs. of  37 variables:
+    ## 'data.frame':    902297 obs. of  38 variables:
     ##  $ STATE__   : num  1 1 1 1 1 1 1 1 1 1 ...
     ##  $ BGN_DATE  : chr  "4/18/1950 0:00:00" "4/18/1950 0:00:00" "2/20/1951 0:00:00" "6/8/1951 0:00:00" ...
     ##  $ BGN_TIME  : chr  "0130" "0145" "1600" "0900" ...
@@ -184,8 +199,9 @@ str(storm_data)
     ##  $ LONGITUDE_: num  8806 0 0 0 0 ...
     ##  $ REMARKS   : chr  "" "" "" "" ...
     ##  $ REFNUM    : num  1 2 3 4 5 6 7 8 9 10 ...
+    ##  $ BG_DATE   : chr  "4/18/1950 0:00:00" "4/18/1950 0:00:00" "2/20/1951 0:00:00" "6/8/1951 0:00:00" ...
 
-### Raw Data Variables Description
+### Raw Data Variables Descriptions
 
 You will find some documentation on this data-set in the following links:
 
@@ -236,7 +252,7 @@ Follow short descriptions of these variables based on information taken from the
 </tr>
 <tr class="even">
 <td>EVTYPE</td>
-<td>Event type as a string. Shows duplications such as &quot;COLD&quot;, &quot;Cold&quot;, &quot;Cold&quot; and &quot;Cold Temperature&quot;. Will require cleanup.</td>
+<td>Event type as a string. Shows duplication such as &quot;COLD&quot;, &quot;Cold&quot;, &quot;Cold&quot; and &quot;Cold Temperature&quot;. Will require cleanup.</td>
 </tr>
 <tr class="odd">
 <td>BGN_RANGE</td>
@@ -377,7 +393,7 @@ From the questions we need to answer, the relevant variables seem to be:
 <tbody>
 <tr class="odd">
 <td>EVTYPE</td>
-<td>Event type as a string. Shows duplications such as &quot;COLD&quot;, &quot;Cold&quot;, &quot;Cold&quot; and &quot;Cold Temperature&quot;. Will require cleanup.</td>
+<td>Event type as a string. Shows duplication such as &quot;COLD&quot;, &quot;Cold&quot;, &quot;Cold&quot; and &quot;Cold Temperature&quot;. Will require cleanup.</td>
 </tr>
 <tr class="even">
 <td>PROPDMG</td>
@@ -418,9 +434,31 @@ PROPDMGEXP`and`CROPDMGEXP\`, the costs in property and crop damages respectively
 
 -   Crop Damage = *C**R**O**P**D**M**G* × 10<sup>*C**R**O**P**D**M**G**E**X**P*</sup>.
 
-This makes sense for the user inputing this data, but is not adequate for our needs. On top of that these exponent variables are strings and can be "H"(undered), "K"(thousand), "M"(illion), etc.
+This makes sense for the user inputting this data, but is not adequate for our needs. On top of that these exponent variables are strings and can be "H"(undered), "K"(thousand), "M"(illion), etc.
 
 `EVTYPE`, the event type, doesn't conform to any standard (even free text is allowed, resulting in typos, i.e., "Avalance" instead of "Avalanche"), thus we will need to deduplicate this variable.
+
+#### `BGN_DATE`
+
+I just want to know the period which this data has been collected. I'm not going to use the date in the aggregrations.
+
+``` r
+storm_data_dt <- data.table(storm_data)
+storm_data_dt <- storm_data_dt[, beginning_year := year(mdy_hms(BGN_DATE))]
+storm_data <- as.data.frame(storm_data_dt)
+```
+
+I'm using data tables due to performance. `sapply()` is much slower than data table's native operations. Given that not many people are familiar with data table's usage, I'm going to convert it back to data frame for the remaining operations in this notebook.
+
+``` r
+storm_data_summary <- summary(storm_data$beginning_year)
+storm_data_summary
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##    1950    1995    2002    1999    2007    2011
+
+The data ranges from the year 1950 to the year 2011.
 
 #### `PROPDMGEXP` and `CROPDMGEXP`
 
@@ -844,7 +882,7 @@ storm_data_dt <- storm_data_dt[, CROPDMGEXP_NORM := normalize_amount_scale(CROPD
 storm_data <- as.data.frame(storm_data_dt)
 ```
 
-I'm using data tables due to performance. `sapply()` is much slower than data table's native operations. Given that not many people are familiar with data table's usage, I'm going to convert it back to data frame for the remaining operations in this notebook.
+Once again I'm using data tables due to performance.
 
 Let's do some sanity check:
 
@@ -985,7 +1023,7 @@ My guess is that the available documentation only covers one of the software app
 
 Given the large amount the unique event types in the data, the process of deduplicating this variable could become quite involved, therefore I'm going to take a peek on the top event types in the data regarding property and crop damage costs first:
 
-Here's the total damages per event type without deduplcating `EVTYPE`:
+Here's the total damages per event type without deduplicating `EVTYPE`:
 
 ``` r
 totals_per_event_type <- storm_data %>%
@@ -1099,7 +1137,7 @@ event_type_patterns <- event_type_patterns[order(sapply(event_type_patterns, len
 
 Note that I have sorted the list of patterns by pattern length in decreasing order. We will try to match the longest patterns first given that multiple patterns might match the same event type (e.g., "Cold" and "Extreme.\*Cold"). They should do most of the deduplication for the event types that matter the most for the analysis (the top ones).
 
-Let's now deduplicate `EVTYPE`. Given that we will work with aggregate data, there's no need to duplicate every record in the Storm Data dataset- (with over 900K records), thus we will deduplicate the aggregated data instead:
+Let's now deduplicate `EVTYPE`. Given that we will work with aggregate data, there's no need to duplicate every record in the Storm Data data-set- (with over 900K records), thus we will deduplicate the aggregated data instead:
 
 ``` r
 pattern_to_name <- function(pattern) {
@@ -1151,7 +1189,7 @@ arrange(deduplicated_totals_per_event_type, desc(total_damages))$event_type[1:24
     ## [23] "Debris Flow/Landslide"               
     ## [24] "Tsunami"
 
-I'm only going to show the top ten event types in my report. I believe that more than that will make the plots too clutered. Still, you might have noticed that the top 24 have been successfully deduplicated (they all belong to the event types in the table we showed earlier).
+I'm only going to show the top ten event types in my report. I believe that more than that will make the plots too clattered. Still, you might have noticed that the top 24 have been successfully deduplicated (they all belong to the event types in the table we showed earlier).
 
 Just for consistency I'm going to use lowercase for all variable names:
 
@@ -1253,7 +1291,7 @@ health_harmful_plot_data
 | Cold/Wind Chill | injuries   |    325|
 | Avalanche       | injuries   |    171|
 
-Here's a function to plot the correspondent barchart:
+Here's a function to plot the correspondent bar chart:
 
 ``` r
 plot_health_harmful_consequences <- function() {
@@ -1261,7 +1299,7 @@ plot_health_harmful_consequences <- function() {
         geom_bar(stat="identity", position = "dodge") +
         scale_x_discrete(limits = top_health_harmful$event_type) +
         geom_text(aes(label = format(health_harmful_plot_data$count, big.mark = ",")), position = position_dodge(width = 0.9), vjust = -0.25) +
-        ggtitle("Top Health Harmful Storm Data Events Across the U.S.") +
+        ggtitle("Top Health Harmful Storm Data Events Across the U.S. (1950-2011)") +
         ylab("Number of Fatalities / Injuries") +
         scale_fill_manual(values = c("burlywood3", "burlywood1"), labels = c("Fatalities", "Injuries")) +
         theme(axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5)) +
@@ -1303,7 +1341,7 @@ top_economic_consequences
 | Ice Storm         |      8968141360|         3946027860|     5022113500|          89|      1992|
 | Wild/Forest fires |      8899845130|         8496563500|      403281630|          90|      1606|
 
-The following code creates a barchart plot for the total damages:
+The following code creates a bar chart plot for the total damages:
 
 ``` r
 one_billion <- 1000000000
@@ -1360,7 +1398,7 @@ damages_plot_data
 | Ice Storm         | crop\_damages     |    5022113500|
 | Wild/Forest fires | crop\_damages     |     403281630|
 
-The following code creates the barchart plot:
+The following code creates the bar chart plot:
 
 ``` r
 property_and_crop_damages_plot <- ggplot(damages_plot_data, aes(x = Event, y = Damages, fill = Metric)) +
@@ -1391,7 +1429,7 @@ Let's put everything together in a single plot:
 plot_economic_consequences <-function() {
     grid.arrange(total_damages_barchart,
              property_and_crop_damages_plot, ncol = 1,
-             top = textGrob("Top Economically Consequential Storm Data Events Accross the U.S.",
+             top = textGrob("Top Economically Consequential Storm Data Events Across the U.S. (1950-2011)",
                             gp = gpar(fontsize = 18, fontface = "bold")))
 }
 
@@ -1405,23 +1443,23 @@ This section is destined to managers and decision makers. The following plots sh
 
 ### Which types of events are most harmful to population health?
 
-The following barchart represents the top most harmful weather events for human life. Note that number of fatalities takes precedence over number of injuries, thus "Flash Flood" is considered more harmful than "Lightining", even though "Lightining" has a superior number of injuries:
+The following bar chart represents the top most harmful weather events for human life. Note that number of fatalities takes precedence over number of injuries, thus "Flash Flood" is considered more harmful than "Lightning", even though "Lightning" has a superior number of injuries:
 
 ``` r
 plot_health_harmful_consequences()
 ```
 
-![](storm_files/figure-markdown_github/unnamed-chunk-36-1.png)
+![](storm_files/figure-markdown_github/unnamed-chunk-40-1.png)
 
-Literature is abundant on this phenomena and a quick web search can help to explain the proeminance of these events in the U.S.:
+Literature is abundant on this phenomena and a quick web search can help to explain the prominence of these events in the U.S.:
 
--   According with wikipedia, [Tornadoes are more common in the U.S. than any other country](https://en.wikipedia.org/wiki/Tornadoes_in_the_United_States), thus we can see them among the top 10.
+-   According with Wikipedia, [Tornadoes are more common in the U.S. than any other country](https://en.wikipedia.org/wiki/Tornadoes_in_the_United_States), thus we can see them among the top 10.
 
--   According with [this article from NPR](http://www.npr.org/sections/thetwo-way/2016/07/22/487031278/heat-dome-causing-excessive-temperatures-in-much-of-u-s), the occurance of "Excessive Heat" and "Heat" events in the U.S. are explained by a phenomena named "heat dome":
+-   According with [this article from NPR](http://www.npr.org/sections/thetwo-way/2016/07/22/487031278/heat-dome-causing-excessive-temperatures-in-much-of-u-s), the occurrence of "Excessive Heat" and "Heat" events in the U.S. are explained by a phenomena named "heat dome":
 
 > "A heat dome occurs when high pressure in the upper atmosphere acts as a lid, preventing hot air from escaping. The air is forced to sink back to the surface, warming even further on the way. This phenomenon will result in dangerously hot temperatures that will envelop the nation throughout the week."
 
-It's clear from the bar plot that the impact of tornadoes largely overwhelms the effect of the remaining weather events.
+It's clear from the bar plot that the impact of tornadoes largely overwhelms the effect of the remaining weather events, both in number of fatalities and injuries.
 
 ### Which types of events have the greatest economic consequences?
 
@@ -1429,14 +1467,14 @@ It's clear from the bar plot that the impact of tornadoes largely overwhelms the
 plot_economic_consequences()
 ```
 
-![](storm_files/figure-markdown_github/unnamed-chunk-37-1.png)
+![](storm_files/figure-markdown_github/unnamed-chunk-41-1.png)
 
 The top contender is "Flood". According with this article from [Business in Focus Magazine](http://www.businessinfocusmagazine.com/2013/09/the-impacts-of-flooding/):
 
 > Floods can have huge consequences for communities and for people. Immediate impacts can include loss of life, damaged infrastructure, and loss of livelihoods. The expenses of this natural disaster can cost billions of dollars and reduce productivity in areas affected by floods. However, floods can also rejuvenate areas that are affected by drought and restore soil fertility. When an area is devastated by a flood, people must be aware of the not only the short-term effects of it, but the long-term effects as well.
 
-"Hurricane/Typhoon" gets second place. The memory of [Hurricane Matthew](https://en.wikipedia.org/wiki/Hurricane_Matthew) should be fresh in your mind from the news (or actual experience!). This hurricane alone caused over 15 U.S. Billion Dollars in damages.
+"Hurricane/Typhoon" gets second place. The memory of [Hurricane Matthew](https://en.wikipedia.org/wiki/Hurricane_Matthew) might be fresh in your mind from the news (or actual experience). This hurricane alone caused over 15 U.S. Billion Dollars in damages.
 
 Tornadoes show up again in the top 10 economically consequential weather events, taking the third place here.
 
-To wrap this section up, the plot at the bottom breaks the damages into property and crop, so their contributions can be analyzed separatedly.
+To wrap this section up, the plot at the bottom breaks the damages into property and crop, so their contributions can be analyzed separately.

@@ -1,17 +1,17 @@
 ---
 title: 'Storm Data Analysis: Fatalities, Injuries and Damages of Severe Weather Events'
-author: "Marcio Gualtieri"
+author: "By Marcio Gualtieri (marcio dot gualtieri at gmail dot com)"
 output:
-  md_document:
-    df_print: kable
-    toc: yes
-    toc_depth: 4
-    variant: markdown_github
   html_document:
     css: ./styles/style.css
     df_print: kable
     toc: yes
     toc_depth: 4
+  md_document:
+    df_print: kable
+    toc: yes
+    toc_depth: 4
+    variant: markdown_github
 ---
 
 ## Installing the Required Packages
@@ -48,29 +48,35 @@ suppressMessages(library(data.table))
 suppressMessages(library(R.utils))    # File compression utils
 ```
 
-## Enabling Caching
+## Knitr Settings
 
 The raw data-set is pretty big, which might make rendering the output slow, so let's enable knitr's global caching:
 
-```{r setup, include = FALSE}
+```{r}
 knitr::opts_chunk$set(cache = TRUE)
 ```
 
-## Setting a Seed
+I'm also enabling verbose for easier debugging:
 
-Just so this notebooḱ's data-set samplings are reproducible:
+```{r}
+knitr::opts_knit$set(verbose = TRUE)
+```
+
+## Setting a Seed
 
 ```{r}
 set.seed(123)
 ```
 
+Just to be sure the table samplings are reproducible.
+
 ## Synopsis
 
-The [National Oceanic and Atmospheric Administration (NOAA)](https://www.ncdc.noaa.gov/) makes available a [database](https://www.ncdc.noaa.gov/stormevents/), in which this organization keeps track of the occurence of unusual weather phenomena that impact human life (i.e., cause signifcant loss of lives, injuries, property and crop damages, etc).
+The [National Oceanic and Atmospheric Administration (NOAA)](https://www.ncdc.noaa.gov/) makes available a [database](https://www.ncdc.noaa.gov/stormevents/) in which they keep track of the occurrence of unusual weather phenomena that impact human life (i.e., cause significant loss of lives, injuries, property and crop damages, etc).
 
-The purpose of this analysis is to identify the top weather phenomena ("Storm Data Events"") in terms of human health harm and economic impact.
+The purpose of this analysis is to identify the top weather phenomena ("Storm Data Events"") in regards to human health harm and economic consequences.
 
-The raw data-set provides individual records for each event with the associated figures for their impact and time of occurence among other information, thus our primary goal is to aggregate such data by type of event and extract relevant insights from such data aggregations in the form of tables and plots.
+The raw data-set provides individual records for each event with the associated figures for their impact and time of occurrence among other information.  Our primary goal is to aggregate such data by type of event across the U.S. for the period of time the data has been collected and extract insights in the form of tables and plots from such aggregation.
 
 ## Data Processing
 
@@ -81,7 +87,9 @@ read_bz2_csv <- function(url) {
   temp_bz2_file <- tempfile()
   temp_csv_file <- tempfile()
   download.file(url, temp_bz2_file, quiet = TRUE)
-  data <- as.data.frame(fread(bunzip2(temp_bz2_file, temp_csv_file), stringsAsFactors = FALSE, encoding = "Latin-1"))
+  data <- as.data.frame(fread(bunzip2(temp_bz2_file, temp_csv_file),
+                              stringsAsFactors = FALSE,
+                              encoding = "Latin-1"))
   unlink(temp_bz2_file)
   unlink(temp_csv_file)
   data
@@ -96,6 +104,7 @@ The input file's original encoding "Latin1" causes problems for some R string op
 ```{r}
 storm_data$PROPDMGEXP <- iconv(storm_data$PROPDMGEXP, from = "Latin1", to = "ASCII", sub = "")
 storm_data$CROPDMGEXP <- iconv(storm_data$CROPDMGEXP, from = "Latin1", to = "ASCII", sub = "")
+storm_data$BG_DATE <- iconv(storm_data$BGN_DATE, from = "Latin1", to = "ASCII", sub = "")
 ```
 
 Let's see how many records we have:
@@ -114,7 +123,7 @@ Follows a full list of variables and their correspondent types:
 str(storm_data)
 ```
 
-### Raw Data Variables Description
+### Raw Data Variables Descriptions
 
 You will find some documentation on this data-set in the following links:
 
@@ -135,7 +144,7 @@ Follow short descriptions of these variables based on information taken from the
 |COUNTY    |County ID (integer).                                                                                                          |
 |COUNTYNAME|County name, all capital letters.                                                                                             |
 |STATE     |U.S. state code, e.g., "NY", "CA", etc.                                                                                       |
-|EVTYPE    |Event type as a string. Shows duplications such as "COLD", "Cold", "Cold" and "Cold Temperature". Will require cleanup.       |
+|EVTYPE    |Event type as a string. Shows duplication such as "COLD", "Cold", "Cold" and "Cold Temperature". Will require cleanup.       |
 |BGN_RANGE |?                                                                                                                             |
 |BGN_AZI   |Azimuth of where the event started ([cardinal point](https://en.wikipedia.org/wiki/Points_of_the_compass#32_cardinal_points)).|
 |BGN_LOCATI|Location where the event originated, i.e., town or city.                                                                      |
@@ -174,7 +183,7 @@ From the questions we need to answer, the relevant variables seem to be:
 
 |Variable  |Description                                                                                                                   |
 |----------|------------------------------------------------------------------------------------------------------------------------------|
-|EVTYPE    |Event type as a string. Shows duplications such as "COLD", "Cold", "Cold" and "Cold Temperature". Will require cleanup.       |
+|EVTYPE    |Event type as a string. Shows duplication such as "COLD", "Cold", "Cold" and "Cold Temperature". Will require cleanup.        |
 |PROPDMG   |Costs in property damages.                                                                                                    |
 |PROPDMGEXP|Scale of the costs in property damages, e.g, H/h(undred), K/k(thousand), M/m(illion) or B/b(illion).                          |
 |CROPDMG   |Cost on crop damages.                                                                                                         |
@@ -194,9 +203,28 @@ PROPDMGEXP` and `CROPDMGEXP`, the costs in property and crop damages respectivel
 
 - $\text{Crop Damage} = CROPDMG \times 10^{CROPDMGEXP}$.
 
-This makes sense for the user inputing this data, but is not adequate for our needs. On top of that these exponent variables are strings and can be "H"(undered), "K"(thousand), "M"(illion), etc.
+This makes sense for the user inputting this data, but is not adequate for our needs. On top of that these exponent variables are strings and can be "H"(undered), "K"(thousand), "M"(illion), etc.
 
 `EVTYPE`, the event type, doesn't conform to any standard (even free text is allowed, resulting in typos, i.e., "Avalance" instead of "Avalanche"), thus we will need to deduplicate this variable.
+
+#### `BGN_DATE`
+
+I just want to know the period for which this data has been collected. I'm not going to use the date in the aggregations.
+
+```{r}
+storm_data_dt <- data.table(storm_data)
+storm_data_dt <- storm_data_dt[, beginning_year := year(mdy_hms(BGN_DATE))]
+storm_data <- as.data.frame(storm_data_dt)
+```
+
+I'm using data tables due to performance. `sapply()` is much slower than data table's native operations. Given that not many people are familiar with data table's usage, I'm going to convert it back to data frame for the remaining operations in this notebook.
+
+```{r}
+storm_data_summary <- summary(storm_data$beginning_year)
+storm_data_summary
+```
+
+The data ranges from the year `r storm_data_summary[1]` to the year `r storm_data_summary[6]`.
 
 #### `PROPDMGEXP` and `CROPDMGEXP`
 
@@ -257,7 +285,7 @@ storm_data_dt <- storm_data_dt[, CROPDMGEXP_NORM := normalize_amount_scale(CROPD
 storm_data <- as.data.frame(storm_data_dt)
 ```
 
-I'm using data tables due to performance. `sapply()` is much slower than data table's native operations. Given that not many people are familiar with data table's usage, I'm going to convert it back to data frame for the remaining operations in this notebook.
+Once again I'm using data tables due to performance.
 
 Let's do some sanity check:
 
@@ -349,9 +377,9 @@ According with "Table 1. Storm Data Event Table", on page 6 in the provided [doc
 
 My guess is that the available documentation only covers one of the software applications used to collect this data. There are other applications which either use different labels for the event types or allow free typing (thus the typos we have found previously).
 
-Given the large amount the unique event types in the data, the process of deduplicating this variable could become quite involved, therefore I'm going to take a peek on the top event types in the data regarding property and crop damage costs first:
+Given the large amount the unique event types in the data, the process of deduplicating this variable could become quite involved, therefore I'm going to take a peek at the top event types in the data regarding property and crop damage costs first:
 
-Here's the total damages per event type without deduplcating `EVTYPE`:
+Here's the total damages per event type without deduplicating `EVTYPE`:
 
 ```{r}
 totals_per_event_type <- storm_data %>%
@@ -412,7 +440,7 @@ event_type_patterns <- event_type_patterns[order(sapply(event_type_patterns, len
 
 Note that I have sorted the list of patterns by pattern length in decreasing order. We will try to match the longest patterns first given that multiple patterns might match the same event type (e.g., "Cold" and "Extreme.*Cold"). They should do most of the deduplication for the event types that matter the most for the analysis (the top ones).
 
-Let's now deduplicate `EVTYPE`. Given that we will work with aggregate data, there's no need to duplicate every record in the Storm Data dataset- (with over 900K records), thus we will deduplicate the aggregated data instead:
+Let's now deduplicate `EVTYPE`. Given that we will work with aggregate data, there's no need to duplicate every record in the Storm Data data-set- (with over 900K records), thus we will deduplicate the aggregated data instead:
 
 ```{r}
 pattern_to_name <- function(pattern) {
@@ -439,7 +467,7 @@ deduplicated_totals_per_event_type <- totals_per_event_type %>%
 arrange(deduplicated_totals_per_event_type, desc(total_damages))$event_type[1:24]
 ```
 
-I'm only going to show the top ten event types in my report. I believe that more than that will make the plots too clutered. Still, you might have noticed that the top 24 have been successfully deduplicated (they all belong to the event types in the table we showed earlier).
+I'm only going to show the top ten event types in my report. I believe that more than that will make the plots too cluttered. Still, you might have noticed that the top 24 have been successfully deduplicated (they all belong to the event types in the table we showed earlier).
 
 Just for consistency I'm going to use lowercase for all variable names:
 
@@ -487,7 +515,7 @@ names(health_harmful_plot_data) <- c("event_type", "metric", "count")
 health_harmful_plot_data
 ```
 
-Here's a function to plot the correspondent barchart:
+Here's a function to plot the correspondent bar chart:
 
 ```{r, fig.height = 8, fig.width = 12, fig.keep = "none"}
 
@@ -496,7 +524,7 @@ plot_health_harmful_consequences <- function() {
         geom_bar(stat="identity", position = "dodge") +
         scale_x_discrete(limits = top_health_harmful$event_type) +
         geom_text(aes(label = format(health_harmful_plot_data$count, big.mark = ",")), position = position_dodge(width = 0.9), vjust = -0.25) +
-        ggtitle("Top Health Harmful Storm Data Events Across the U.S.") +
+        ggtitle("Top Health Harmful Storm Data Events Across the U.S. (1950-2011)") +
         ylab("Number of Fatalities / Injuries") +
         scale_fill_manual(values = c("burlywood3", "burlywood1"), labels = c("Fatalities", "Injuries")) +
         theme(axis.text.x = element_text(size = 12, angle = 90, hjust = 1, vjust = 0.5)) +
@@ -525,7 +553,7 @@ top_economic_consequences <- arrange(deduplicated_totals_per_event_type, desc(to
 top_economic_consequences
 ```
 
-The following code creates a barchart plot for the total damages:
+The following code creates a bar chart plot for the total damages:
 
 ```{r, fig.height = 8, fig.width = 12, fig.keep = "none"}
 
@@ -560,7 +588,7 @@ names(damages_plot_data) <- c("Event", "Metric", "Damages")
 damages_plot_data
 ```
 
-The following code creates the barchart plot:
+The following code creates the bar chart plot:
 
 ```{r, fig.height = 8, fig.width = 12, fig.keep = "none"}
 
@@ -593,7 +621,7 @@ Let's put everything together in a single plot:
 plot_economic_consequences <-function() {
     grid.arrange(total_damages_barchart,
              property_and_crop_damages_plot, ncol = 1,
-             top = textGrob("Top Economically Consequential Storm Data Events Accross the U.S.",
+             top = textGrob("Top Economically Consequential Storm Data Events Across the U.S. (1950-2011)",
                             gp = gpar(fontsize = 18, fontface = "bold")))
 }
 
@@ -606,21 +634,23 @@ This section is destined to managers and decision makers. The following plots sh
 
 ### Which types of events are most harmful to population health?
 
-The following barchart represents the top most harmful weather events for human life. Note that number of fatalities takes precedence over number of injuries, thus "Flash Flood" is considered more harmful than "Lightining", even though "Lightining" has a superior number of injuries:
+The following bar chart represents the top most harmful weather events for human life. Note that number of fatalities takes precedence over number of injuries, thus "Flash Flood" is considered more harmful than "Lightning", even though "Lightning" has a superior number of injuries:
 
 ```{r, fig.height = 8, fig.width = 12}
 plot_health_harmful_consequences()
 ```
 
-Literature is abundant on this phenomena and a quick web search can help to explain the proeminance of these events in the U.S.:
+Literature is abundant on these phenomena and a quick web search can easily help to explain the prominence of such events in the U.S.:
 
-- According with wikipedia, [Tornadoes are more common in the U.S. than any other country](https://en.wikipedia.org/wiki/Tornadoes_in_the_United_States), thus we can see them among the top 10.
+- According with Wikipedia, [Tornadoes are more common in the U.S. than any other country](https://en.wikipedia.org/wiki/Tornadoes_in_the_United_States), thus we can see them among the top 10.
 
-- According with [this article from NPR](http://www.npr.org/sections/thetwo-way/2016/07/22/487031278/heat-dome-causing-excessive-temperatures-in-much-of-u-s), the occurance of "Excessive Heat" and "Heat" events in the U.S. are explained by a phenomena named "heat dome":
+- According with [this article from NPR](http://www.npr.org/sections/thetwo-way/2016/07/22/487031278/heat-dome-causing-excessive-temperatures-in-much-of-u-s), the occurrence of "Excessive Heat" and "Heat" events in the U.S. are explained by a phenomena named "heat dome":
 
 > "A heat dome occurs when high pressure in the upper atmosphere acts as a lid, preventing hot air from escaping. The air is forced to sink back to the surface, warming even further on the way. This phenomenon will result in dangerously hot temperatures that will envelop the nation throughout the week."
 
-It's clear from the bar plot that the impact of tornadoes largely overwhelms the effect of the remaining weather events.
+It's clear from the bar plot that the impact of tornadoes largely overwhelms the effect of the remaining weather events both in number of fatalities and injuries. Of course, some of these events might be easier to counter than others. Tornadoes surely take the crown as the most harmful, given their devastating effects and difficulty to forecast. On the other hand, we might get more bang for the buck if we concentrate efforts in other events that are easier to counter, prevent or mitigate.
+
+I suggest that a study to determine what are the available options to handle such events, as well as their intrinsic costs, is necessary.
 
 ### Which types of events have the greatest economic consequences?
 
@@ -632,8 +662,10 @@ The top contender is "Flood". According with this article from [Business in Focu
 
 > Floods can have huge consequences for communities and for people. Immediate impacts can include loss of life, damaged infrastructure, and loss of livelihoods. The expenses of this natural disaster can cost billions of dollars and reduce productivity in areas affected by floods. However, floods can also rejuvenate areas that are affected by drought and restore soil fertility. When an area is devastated by a flood, people must be aware of the not only the short-term effects of it, but the long-term effects as well.
 
-"Hurricane/Typhoon" gets second place. The memory of [Hurricane Matthew](https://en.wikipedia.org/wiki/Hurricane_Matthew) should be fresh in your mind from the news (or actual experience!). This hurricane alone caused over 15 U.S. Billion Dollars in damages.
+"Hurricane/Typhoon" gets second place. The memory of [Hurricane Matthew](https://en.wikipedia.org/wiki/Hurricane_Matthew) might be fresh in your mind from the news (or actual experience). This hurricane alone caused over 15 U.S. Billion Dollars in damages.
 
-Tornadoes show up again in the top 10 economically consequential weather events, taking the third place here.
+Tornadoes show up again in the top 10 economically consequential weather events, taking the third place here. As suggested in the previous section, a study to determine the costs to counter these weather events is also required.
 
-To wrap this section up, the plot at the bottom breaks the damages into property and crop, so their contributions can be analyzed separatedly.
+To wrap this section up, the plot at the bottom breaks the damages into property and crop, so their contributions can be analyzed separately.
+
+This last plot is a reminder that this data only shows direct costs. Damages in crop production have indirect consequences as well (such as food supply shortage and, consequently, increased prices). One could even argue that events that cause crop damage are health harmful as well as economically harmful, but we can't evaluate this effect from the available data.
